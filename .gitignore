@@ -1,0 +1,16 @@
+# Virtual environment (OS-specific)
+venv/
+env/
+
+# IDE/editor files
+.vscode/
+.idea/
+__pycache__/
+*.pyc
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+
+# Ignore session key files
+.sesskey
