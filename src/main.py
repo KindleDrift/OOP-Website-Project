@@ -1,12 +1,5 @@
 from fasthtml.common import *
-
-class Hotel:
-    pass
-
-
-class User:
-    pass
-
+from classes.hotel import *
 
 app, rt = fast_app()
 
