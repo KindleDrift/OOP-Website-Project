@@ -14,3 +14,13 @@ Thumbs.db
 
 # Ignore session key files
 .sesskey
+
+# Ignore database files
+*.sqlite3
+data/
+
+# Ignore image files
+*.png
+*.jpg
+*.jpeg
+*.gif
