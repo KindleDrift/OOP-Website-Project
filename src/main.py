@@ -6,30 +6,38 @@ app, rt = fast_app(debug=True)
 
 def room_card(room: Room):
     return Card(
+        Img(src=room.image, cls="card-img-top", alt=f"Room {room.room_id}",
+        style="width: auto; max-height: 300px; object-fit: cover;"),
         Div(
             H4(f"Room {room.room_id}"),
-            cls="card-header",
-            style="text-align: center;"
-        ),
-        Div(
             P(f"Type: {room.type}"),
             P(f"Size: {room.size}"),
             P(f"Price: {room.price}"),
-            P(f"Status: {room.status}"),
+            P(f"Status: {"Available" if room.status == 1 else "Unavailable"}"),
             P(f"Things: {', '.join(room.things)}"),
-            Img(src=room.image, cls="card-img-top", alt="Room Image"),
-            cls="card-body",
-            style="text-align: center;"
+            Button("Book", cls="btn btn-primary", hx_post="/book"),
+            cls="card-text",
+            style="text-align: left; margin-left: 20px;"
         ),
-        style="width: 18rem; margin: 10px;"
+        style="width: 100%; margin: 10px; display: flex;"
     )
 
 
 #temporary create an instance of room
-room = Room(101, "Single", 20, 100, "Available", ["TV", "AC", "Wifi"], "./images/room1.jpg")
+room1 = Room(101, "Single", 20, 100, 1, ["TV", "AC", "Wifi"], "./images/room1.jpg")
+room2 = Room(102, "Double", 30, 150, 1, ["TV", "AC", "Wifi"], "./images/room2.jpg")
 
-def get_room():
-    return room_card(room)
+room_list = [room1, room2]
+
+def get_room(start_date, end_date, room_type):
+    returned_room = []
+    print("Pressed")
+    for room in room_list:
+        print(f"Room Type: {room.type}")
+        if room.status == 1 and room.type == room_type or room_type == "All":
+            print("Should be here")
+            returned_room.append(room_card(room))
+    return returned_room
 
 @rt("/")
 def get():
@@ -53,22 +61,53 @@ def get():
 
 
 @rt("/booking")
-def get():
+async def get(request):
     return Titled("Booking",
         Container(
             H1("Book a Room"),
-            # Search Rooms
-            P(get_room()),
             Form(
-                Input(placeholder="Name", cls="form-control"),
-                Input(placeholder="Email", cls="form-control"),
-                Input(placeholder="Check-in", cls="form-control"),
-                Input(placeholder="Check-out", cls="form-control"),
-                Button("Book", cls="btn btn-primary", hx_post="/book"),
+                Div(
+                    Label("Check-in Date",
+                          Input(type="date", name="check-in", required=True)
+                        ),
+                    Label("Check-out Date",
+                          Input(type="date", name="check-out", required=True)
+                        ),
+                    style="display: flex; justify-content: space-evenly;"
+                ),
+                Label("Room Type"),
+                Select(
+                    Option("Single", value="Single"),
+                    Option("Double", value="Double"),
+                    Option("Family", value="Family"),
+                    Option("Suite", value="Suite"),
+                    Option("All", value="All", selected=True),
+                    name="room-type"
+                ),
+                Button("Search", type="submit", cls="btn btn-primary", hx_post=f"/get-rooms/", hx_target="#room-list"),
+                id="room-filter",
+                style=""
+            ),
+            Hr(),
+            Div(
+                H2("Available Rooms"),
+                Div(id="room-list"),
                 style="text-align: center;"
-            )
+            ),
         )
     )
+
+
+@rt("/get-rooms/")
+async def post(request):
+    form_data = await request.form()
+    start_date = form_data.get("check-in")
+    end_date = form_data.get("check-out")
+    room_type = form_data.get("room-type")
+
+    print(start_date, end_date, room_type)
+
+    return Div(*get_room(start_date, end_date, room_type))
 
 @rt("/rooms")
 def get():

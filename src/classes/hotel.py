@@ -17,7 +17,7 @@ class Things:
 
 
 class Room:
-    def __init__(self, room_id, type, size, price, status, things: Things, image):
+    def __init__(self, room_id, type, size, price, status: bool, things: Things, image):
         self.__room_id = room_id
         self.__type = type
         self.__size = size
