@@ -1,7 +1,28 @@
 from fasthtml.common import *
 
 class Hotel:
-    pass
+    def __init__(self, Room=None):
+        self.__rooms = []
+
+    @property
+    def rooms(self):
+        return self.__rooms
+
+    def add_room(self, room):
+        self.__rooms.append(room)
+
+    def get_room_by_id(self, room_id):
+        for room in self.__rooms:
+            if room.room_id == room_id:
+                return room
+        return None
+    
+    def get_room(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
+        returned_room = []
+        for room in self.rooms:
+            if (room.status == 1) and (room.type == room_type or room_type == "All") and (room.size >= size) and (room.price <= max_price) and ((all(thing in room.things for thing in things) or things == [None])):
+                returned_room.append(room)
+        return returned_room
 
 
 class User:
