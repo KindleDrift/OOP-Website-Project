@@ -6,28 +6,69 @@ app, rt = fast_app(debug=True, secret_key="secret")
 
 login_redir = RedirectResponse('/login', status_code=303)
 
-# def before(req, sess):
-#     auth = req.scope['auth'] = sess.get('auth', None)
-#     if not auth: return login_redir
+def menu(session):
+    is_login = "user_id" in session
+    login = "Login" if not is_login else "Logout"
+    return Nav(
+                Div(
+                    A("Home", href="/"),
+                    A("Room", href="/rooms"),
+                    cls="navbar-links",
+                    style="display: flex; gap: 15px; text-align: center; font-weight: 800; --pico-color: var(--pico-contrast);"
+                    
+                ),
+                Div(
+                    A("Profile", href="/profile"),
+                    A(f"{login}", href=f"/{login.lower()}"),
+                    cls="navbar-auth",
+                    style="display: flex; gap: 10px; text-align: center; font-weight: 800; --pico-color: var(--pico-contrast);",
+                ),
+            cls="navbar",
+            style="box-shadow: 0 5px 10px black; \
+            padding: 10px 20px; \
+            display: flex; \
+            justify-content: space-between; \
+            align-items: center;"
+            )
 
 
-def room_card_booking(room: Room, start_date, end_date):
+def create_instance():
+    #temporary create an instance of room
+    global hotel
+    hotel = Hotel()
+    hotel.add_room(Room(101, "Single", 1, 100, 1, ["AC", "Wifi"], "room1.jpg"))
+    hotel.add_room(Room(102, "Double", 2, 150, 1, ["TV", "AC", "Wifi"], "room2.jpg"))
+    hotel.add_room(Room(103, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room3.jpg"))
+    hotel.add_room(Room(104, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room4.jpg"))
+    hotel.add_room(Room(105, "Single", 1, 100, 1, ["TV", "AC", "Wifi"], "room5.jpg"))
+    hotel.add_room(Room(106, "Double", 2, 150, 1, ["AC", "Wifi"], "room6.jpg"))
+    hotel.add_room(Room(107, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room7.jpg"))
+    hotel.add_room(Room(108, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room8.jpg"))
+
+    # user account
+    hotel.create_guest(1, "JohnDoe", "password", "john.d@domain.xyz", "1234567890", "1234 Main St")
+    hotel.create_guest(2, "JaneDoe", "password", "jane.d@domain.xyz", "193848", "23 Main St")
+
+
+create_instance()
+
+def display_room(room: Room, start_date, end_date):
     return Card(
         Img(src=f"/images/{room.image}", cls="card-img-top", alt=f"Room {room.room_id}",
-        style="width: auto; max-height: 300px; object-fit: cover;"),
+        style="max-height: 300px; object-fit: cover;"),
         Div(
             H2(f"Room {room.room_id}"),
             P(f"Room Type: {room.type}"),
-            P(f"Maximum People: {"👤" * room.size}"),
+            P(f"Maximum People: {'👤' * room.size}"),
             P(f"Price: ฿{room.price} / Day"),
-            P(f"Status: {"Available" if room.status == 1 else "Unavailable"}"),
+            P(f"Status: {'Available' if room.status == 1 else 'Unavailable'}"),
             P(f"Commodity: {', '.join(room.things)}"),
             Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary", onclick=f"document.location='/booking/{room.room_id}/{start_date.strftime("%Y-%m-%d")}/{end_date.strftime("%Y-%m-%d")}'",
                    style="font-weight: bold;"),
             cls="card-text",
             style="text-align: left; margin-left: 20px;"
         ),
-        style="width: 100%; margin: 10px; display: flex;"
+        style="width: 100%; margin: 10px 0; display: flex;"
     )
 
 
@@ -48,45 +89,36 @@ def room_card(room: Room, start_date, end_date):
             cls="card-text",
             style="text-align: left; margin-left: 20px;"
         ),
-        style="width: 100%; margin: 10px; display: flex;"
+        style="width: 100%; margin: 10px 0; display: flex;"
     )
-
-#temporary create an instance of room
-hotel = Hotel()
-hotel.add_room(Room(101, "Single", 1, 100, 1, ["AC", "Wifi"], "room1.jpg"))
-hotel.add_room(Room(102, "Double", 2, 150, 1, ["TV", "AC", "Wifi"], "room2.jpg"))
-hotel.add_room(Room(103, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room3.jpg"))
-hotel.add_room(Room(104, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room4.jpg"))
-hotel.add_room(Room(105, "Single", 1, 100, 1, ["TV", "AC", "Wifi"], "room5.jpg"))
-hotel.add_room(Room(106, "Double", 2, 150, 1, ["AC", "Wifi"], "room6.jpg"))
-hotel.add_room(Room(107, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room7.jpg"))
-hotel.add_room(Room(108, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room8.jpg"))
 
 
 @rt("/")
-def get():
-    return Titled("Hotel",
-        Container(
+def get(session):
+    return (Title("Cozy Hotel"),
+        menu(session),
+        Div(Container(
             Div(
-                H1("Welcome to the Hotel", style="color: white;"),
-                P("We have the best rooms in the world", style="color: white;"),
-                style="text-shadow: 0px 0px 4px black;"               
+                H1(Mark("Welcome to the Hotel")),
+                P(Mark("We have the coziest rooms in the world")),            
             ),
-            Button("Book Now", cls="btn btn-primary", onclick="document.location='/booking'"),
+            Button("Book Now", cls="btn btn-primary", onclick="document.location='/booking'")
+        ),
+            cls="hero",
             style="text-align: center; \
-                    background-image: url('./images/hotel.jpg'); \
-                    background-size: cover; \
-                    background-repeat: no-repeat; \
-                    background-attachment: fixed; \
-                    background-position: center; \
-                    padding: 100px 0;"
-        )
+            background-image: url('./images/hotel.jpg'); \
+            background-size: cover; \
+            background-repeat: no-repeat; \
+            background-attachment: fixed; \
+            background-position: center; \
+            padding: 100px 0;"),
     )
 
 
 @rt("/booking")
-async def get():
-    return Titled("Booking",
+async def get(session):
+    return (Title("Booking"),
+        menu(session),
         Container(H1("Book a Room"),
             Form(Label("Check-in Date and Check-out Date",
                     Group(
@@ -157,7 +189,7 @@ async def post(request):
     if matching_hotel == []:
         return P("No rooms available / match your criteria")   
 
-    return Div(*(room_card_booking(room, start_date, end_date) for room in matching_hotel))
+    return Div(*(display_room(room, start_date, end_date) for room in matching_hotel))
 
 @rt("/rooms")
 def get():
@@ -171,7 +203,10 @@ def get():
 
 
 @rt("/booking/{room_id}/{start_date}/{end_date}")
-def get(room_id: int, start_date: str, end_date: str):
+def get(session, room_id: int, start_date: str, end_date: str):
+    if "user_id" not in session:
+        return login_redir
+
 
     formated_start = datetime.strptime(start_date, "%Y-%m-%d")
     formated_end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -197,30 +232,43 @@ def get(room_id: int, start_date: str, end_date: str):
                     Label("Full Legal Name on Credit Card",
                         Input(type="text", name="full-name", required=True)),
                     Group(
-                        Input(placeholder="Credit Card Number", type="text", name="credit-card", required=True),
+                        Input(placeholder="Credit Card Number", type="text", name="credit-card", required=True, aria_invalid="true"),
                         Input(placeholder="Expiry Date (MM/YY)", type="text", name="expiration", required=True),
                         Input(placeholder="CVV", type="text", name="cvv", required=True)
                     ),
                     Label("Billing Address",
                         Input(type="text", name="address", required=True)),
-                    Button("Confirm", type="submit", cls="btn btn-primary", onclick="document.location='/success'"),
+                    Button("Confirm", type="submit", cls="btn btn-primary", hx_post="/validate-booking", hx_target="#booking-form"),
                     style=""
                 ),
                 style="text-align: center;"
             ),
-            style="text-align: left;"
+            style="text-align: left;",
+            id="booking-form"
         )
     )
 
 
+@rt("/validate-booking")
+async def post(request):
+    form_data = await request.form()
+    card_number = form_data.get("credit-card")
+
+    hotel.create_booking()
+
+    #Create booking instance
+    return Container(
+        H1("Booking Successful"),
+        P("Thank you for booking with us"),
+        style="text-align: center;"
+    )
+
 @rt("/success")
 def get():
-    return Titled(
-        Container(
-            H1("Booking Successful"),
-            P("Thank you for booking with us"),
-            style="text-align: center;"
-        )
+    return Container(
+        H1("Booking Successful"),
+        P("Thank you for booking with us"),
+        style="text-align: center;"
     )
 
 @rt("/profile")
@@ -251,22 +299,62 @@ def get():
     )
 
 
-@rt("/login")
-def get():
-    return Titled(
+@rt("/login", methods=["GET"])
+def get(session, request, redirect):
+    if "user_id" in session:
+        return Redirect(f"{request.query_params["redirect"]}")
+
+    print("Something",redirect)
+
+    return (Title("Login"),
+        menu(session),
         Container(
-            H1("Login"),
-            Form(
-                Label("Email",
-                    Input(type="email", name="email", required=True)),
-                Label("Password",
-                    Input(type="password", name="password", required=True)),
-                Button("Login", type="submit", cls="btn btn-primary", onclick="document.location='/'"),
-                style=""
-            ),
-            style="text-align: center;"
+            H1("Login", style="text-align: center;"),
+            Card(
+                Form(
+                    Input(type="hidden", name="redirect", value=redirect),
+                    Label("Username",
+                        Input(type="text", name="username", required=True)),
+                    Label("Password",
+                        Input(type="password", name="password", required=True)),
+                    P(id="return-message", style="color: red;"),
+                    Button("Login", type="submit", cls="btn btn-primary", required=True, hx_post="/login", hx_target="#return-message"),
+                ),
+                Hr(),
+                A("Sign Up", href="/signup", style="text-align: center;"),
+                style="text-align: center; max-width: 400px; margin: 0 auto"
+            )
         )
     )
+
+@rt("/login", methods=["POST"])
+async def login(request, session, redirect, method="POST"):
+    form_data = await request.form()
+    username = form_data.get("username")
+    password = form_data.get("password")
+
+    hidden_redirect = form_data.get("redirect", "/") 
+
+    print("Submitted", username, password)
+
+    for guest in hotel.guests:
+        if guest.authenticate(username, password):
+            session["user_id"] = guest.user_id
+            print("main",hidden_redirect)
+            return Redirect(f"{hidden_redirect}")
+
+    return P("Invalid credentials", style="color: red;")
+
+    
+
+
+@rt("/logout")
+def get(session):
+    session.pop("user_id", None)
+    return Redirect("/")
+
+
+@rt("")
 
 
 @rt("/staff/")
