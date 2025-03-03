@@ -5,6 +5,7 @@ class Hotel:
         self.__rooms = []
         self.__bookings = []
         self.__guests = []
+        self.__staffs = []
 
     @property
     def rooms(self):
@@ -17,6 +18,10 @@ class Hotel:
     @property
     def guests(self):
         return self.__guests
+    
+    @property
+    def staffs(self):
+        return self.__staffs
 
     def add_room(self, room):
         self.__rooms.append(room)
@@ -27,6 +32,12 @@ class Hotel:
                 return room
         return None
     
+    def get_guest_by_id(self, guest_id):
+        for guest in self.__guests:
+            if guest.user_id == guest_id:
+                return guest
+        return None
+    
     def get_room(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
@@ -34,13 +45,26 @@ class Hotel:
                 returned_room.append(room)
         return returned_room
     
-    def create_booking(self):
-        self.bookings.append(Booking())
+    def create_booking(self, guest, room, start_date, end_date):
+        self.bookings.append(Booking(guest, room, start_date, end_date, "Pending"))
         return self.bookings[-1]
     
     def create_guest(self, user_id, name, password, email, phone, address):
         self.guests.append(Guest(user_id, name, password, email, phone, address))
         return "Success"
+    
+    def create_staff(self, user_id, name, password, email, phone, address):
+        self.staffs.append(Staff(user_id, name, password, email, phone, address))
+        return "Success"
+    
+    def validate_user(self, name, password):
+        for guest in self.guests:
+            if guest.authenticate(name, password):
+                return guest
+        for staff in self.staffs:
+            if staff.authenticate(name, password):
+                return staff
+        return None
 
 
 class User:
@@ -72,8 +96,9 @@ class Guest(User):
         self.__bookings = []
 
 
-class Staff:
-    pass
+class Staff(User):
+    def __init__(self, user_id, name, password, email, phone, address):
+        super().__init__(user_id, name, password, email, phone, address)
 
 
 class Floor:
@@ -124,4 +149,36 @@ class Room:
     
 
 class Booking():
-    pass
+    current_booking_id = 1
+    def __init__(self, guest=None, room=None, start_date=None, end_date=None, status=None):
+        self.__booking_id = self.current_booking_id
+        self.__guest = guest
+        self.__room = room
+        self.__start_date = start_date
+        self.__end_date = end_date
+        self.__status = status
+        Booking.current_booking_id += 1
+
+    @property
+    def booking_id(self):
+        return self.__booking_id
+    
+    @property
+    def guest(self):
+        return self.__guest
+
+    @property
+    def room(self):
+        return self.__room
+
+    @property
+    def start_date(self):
+        return self.__start_date
+    
+    @property
+    def end_date(self):
+        return self.__end_date
+
+    @property
+    def status(self):
+        return self.__status
