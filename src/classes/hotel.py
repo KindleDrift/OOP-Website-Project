@@ -1,4 +1,6 @@
 from fasthtml.common import *
+from datetime import datetime, timedelta
+import uuid
 
 class Hotel:
     def __init__(self, Room=None, Booking=None, Guest=None, Staff=None, Floor=None, Things=None):
@@ -41,69 +43,102 @@ class Hotel:
     def get_room(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
-            if (room.status == 1) and (room.type == room_type or room_type == "All") and (room.size >= size) and (room.price <= max_price) and ((all(thing in room.things for thing in things) or things == [None])):
+            print("GetROOM",room.room_id)
+            if (room.status == 1) and \
+                (room.type == room_type or room_type == "All") and \
+                (room.size >= size) and (room.price <= max_price) and \
+                ((all(thing in room.things for thing in things) or things == [None])) and \
+                (self.check_room_availability(room.room_id, start_date, end_date)):
                 returned_room.append(room)
         return returned_room
+    
+    def check_room_availability(self, room_id, start_date, end_date):
+        room = self.get_room_by_id(room_id)
+        for booking in self.bookings:
+            if booking.room == room and (booking.status == "Staying" or booking.status == "Pending"):
+                if (booking.start_date <= start_date and booking.end_date >= start_date) or \
+                    (booking.start_date <= end_date and booking.end_date >= end_date) or \
+                    (booking.start_date >= start_date and booking.end_date <= end_date):
+                    return False
+        return True
     
     def create_booking(self, guest, room, start_date, end_date):
         self.bookings.append(Booking(guest, room, start_date, end_date, "Pending"))
         return self.bookings[-1]
     
-    def create_guest(self, user_id, name, password, email, phone, address):
-        self.guests.append(Guest(user_id, name, password, email, phone, address))
+    def create_guest(self, username, real_name, email, password):
+        if any(guest.username == username for guest in self.guests):
+            return "Username already exists"
+        if any(guest.email == email for guest in self.guests):
+            return "Email already exists"
+        if any(staff.username == username for staff in self.staffs):
+            return "Username already exists"
+        if any(staff.email == email for staff in self.staffs):
+            return "Email already exists"
+        self.guests.append(Guest(username, real_name, email, password))
         return "Success"
     
-    def create_staff(self, user_id, name, password, email, phone, address):
-        self.staffs.append(Staff(user_id, name, password, email, phone, address))
+    def create_staff(self, username, real_name, email, password):
+        self.staffs.append(Staff(username, real_name, email, password))
         return "Success"
     
-    def validate_user(self, name, password):
+    def validate_user(self, email, password):
         for guest in self.guests:
-            if guest.authenticate(name, password):
+            if guest.authenticate(email, password):
                 return guest
         for staff in self.staffs:
-            if staff.authenticate(name, password):
+            if staff.authenticate(email, password):
                 return staff
         return None
-
+    
 
 class User:
-    def __init__(self, user_id, name, password, email, phone, address):
-        self.__user_id = user_id
-        self.__name = name
-        self.__password = password
+    __id_counter = 1
+    def __init__(self, name, real_name, email, password):
+        self.__user_id = User.__id_counter
+        self.__username = name
+        self.__real_name = real_name
         self.__email = email
-        self.__phone = phone
-        self.__address = address
+        self.__password = password
+        User.__id_counter += 1
 
     @property
     def user_id(self):
         return self.__user_id
     
     @property
-    def name(self):
-        return self.__name
+    def username(self):
+        return self.__username
+    
+    @property
+    def real_name(self):
+        return self.__real_name
 
-    def authenticate(self, name, password):
-        if self.__name == name and self.__password == password:
+    @property
+    def email(self):
+        return self.__email
+
+    def authenticate(self, email, password):
+        if self.__email == email and self.__password == password:
             return True
         return False
 
 
 class Guest(User):
-    def __init__(self, user_id, name, password, email, phone, address):
-        super().__init__(user_id, name, password, email, phone, address)
+    def __init__(self, name, real_name, password, email):
+        super().__init__(name, real_name, password, email)
         self.__bookings = []
 
 
 class Staff(User):
-    def __init__(self, user_id, name, password, email, phone, address):
-        super().__init__(user_id, name, password, email, phone, address)
+    def __init__(self, name, real_name, password, email):
+        super().__init__(name, real_name, password, email)
 
 
 class Floor:
-    pass
-
+    def __init__(self, floor_number):
+        self.__floor_id = floor_number
+        self.__rooms = []
 
 class Things:
     pass
@@ -182,3 +217,5 @@ class Booking():
     @property
     def status(self):
         return self.__status
+    
+
