@@ -1,6 +1,5 @@
 from fasthtml.common import *
 from datetime import datetime, timedelta
-from dataclasses import dataclass
 from classes.hotel import *
 
 app, rt = fast_app(debug=False, secret_key="secret")
@@ -19,17 +18,18 @@ def create_instance():
     hotel.create_room(Room(108, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room8.jpg"))
 
     # user account
+    hotel.create_staff("ManagerPaul", "Paul Howard", "paul.h@cozyhotel.com", "password")
+    hotel.create_staff("DriverJoe", "Joe Speed", "joe.s@cozyhotel.com", "password")
+    hotel.create_staff("ChefMike", "Mike Cowave", "mike.c@cozyhotel.com", "password")
     hotel.create_guest("JohnDoe", "John Doe", "john.d@domain.xyz", "password")
     hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@domain.xyz", "password")
-    hotel.create_staff("admin", "Joe Hill", "joe.h@cozyhotel.com", "password")
-    hotel.create_staff("DriverJoe", "Joe Speed", "joe.s@cozyhotel.com", "password")
 
     hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(101), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(102), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(103), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(104), datetime.today(), datetime.today() + timedelta(days=1))
 
-    driver = hotel.get_staff_by_id(4)
+    driver = hotel.get_staff_by_id(2)
     hotel.transport.create_route("Airport", driver, "10:00 AM")
     hotel.transport.create_route("City Tour", driver, "2:00 PM")
     hotel.transport.create_route("Beach", driver, "4:30 PM")
@@ -37,6 +37,41 @@ def create_instance():
     hotel.transport.create_route("Suburban Shuttle", driver, "11:00 AM")
     hotel.transport.create_route("Nightlife Special", driver, "9:00 PM")
     hotel.transport.create_route("Train Station", driver, "6:00 AM")
+
+    hotel.food_ordering.add_new_menu("Pasta Alfredo", 429,"https://images.aws.nestle.recipes/resized/0a0717810b73a1672a029c29788e557b_creamy_alfredo_pasta_long_left_1080_850.jpg")
+    hotel.food_ordering.add_new_menu("Margherita Pizza", 329,"https://images.prismic.io/eataly-us/ed3fcec7-7994-426d-a5e4-a24be5a95afd_pizza-recipe-main.jpg?auto=compress,format")
+    hotel.food_ordering.add_new_menu("Caesar Salad", 269,"https://www.cuisinart.com/dw/image/v2/ABAF_PRD/on/demandware.static/-/Sites-us-cuisinart-sfra-Library/default/dw92573286/images/recipe-Images/classic-caesar-salad-recipe.jpg?sw=1200&sh=1200&sm=fit")
+    hotel.food_ordering.add_new_menu("Steak", 699,"https://www.seriouseats.com/thmb/-KA2hwMofR2okTRndfsKtapFG4Q=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/__opt__aboutcom__coeus__resources__content_migration__serious_eats__seriouseats.com__recipes__images__2015__05__Anova-Steak-Guide-Sous-Vide-Photos15-beauty-159b7038c56a4e7685b57f478ca3e4c8.jpg")
+    hotel.food_ordering.add_new_menu("Spaghetti Carbonara", 399,"https://www.allrecipes.com/thmb/Vg2cRidr2zcYhWGvPD8M18xM_WY=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/11973-spaghetti-carbonara-ii-DDMFS-4x3-6edea51e421e4457ac0c3269f3be5157.jpg")
+    hotel.food_ordering.add_new_menu("Chicken Parmesan", 469,"https://tastesbetterfromscratch.com/wp-content/uploads/2023/03/Chicken-Parmesan-1.jpg")
+    hotel.food_ordering.add_new_menu("Bruschetta", 239,"https://kjsfoodjournal.com/wp-content/uploads/2020/07/tomato-bruschetta.jpg")
+    hotel.food_ordering.add_new_menu("Tiramisu", 189,"https://sugarpursuit.com/wp-content/uploads/2023/03/Easy-tiramisu-recipe-thumbnail.jpg")
+    hotel.food_ordering.add_new_menu("Gelato", 149,"https://emmaduckworthbakes.com/wp-content/uploads/2023/06/Chocolate-Gelato-Recipe.jpg")
+    hotel.food_ordering.add_new_menu("Minestrone Soup", 269,"https://www.katiescucina.com/wp-content/uploads/2021/09/Olive-Garden-Minestrone-Soup-Square.jpg")
+    hotel.food_ordering.add_new_menu("Focaccia Bread", 139,"https://handletheheat.com/wp-content/uploads/2014/08/Focaccia-Bread-SQUARE.jpg")
+    hotel.food_ordering.add_new_menu("Lasagna", 429,"https://www.allrecipes.com/thmb/94MKwLbkHmG8Zp871AOy3GhZwv4=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/AR-19344-Homemade-Lasagna-beauty-4x3-450e3ec3bc454e4a805443bee77c5be8.jpg")
+    hotel.food_ordering.add_new_menu("Risotto", 479,"https://cookingwithwineblog.com/wp-content/uploads/2024/04/Milanese-Style-Creamy-Saffron-Leek-Risotto-Recipe-Featured-1.jpg")
+    hotel.food_ordering.add_new_menu("Caprese Salad", 299,"https://www.allrecipes.com/thmb/Usj7zOLJSQ5xqw-4dwWarvPNjJg=/1500x0/filters:no_upscale():max_bytes(150000):strip_icc()/AR-228126-caprese-salad-with-balsamic-reduction-ddmfs-2644-4x3-f32ac2b2fb9d4234884a752490fb015b.jpg")
+
+    for dish_name in ["Pasta Alfredo", "Margherita Pizza", "Caesar Salad", "Steak", "Spaghetti Carbonara", 
+                  "Chicken Parmesan", "Bruschetta", "Tiramisu", "Gelato", "Minestrone Soup", 
+                  "Focaccia Bread", "Lasagna", "Risotto", "Caprese Salad"]:
+        hotel.food_ordering.restock(dish_name, 10)
+
+    hotel.laundry.create_cloth("Shirt", 10.00)
+    hotel.laundry.create_cloth("Pants", 15.50)
+    hotel.laundry.create_cloth("Jacket", 20.00)
+    hotel.laundry.create_cloth("Dress", 25.50)
+    hotel.laundry.create_cloth("Sweater", 18.00)
+    hotel.laundry.create_cloth("Coat", 30.00)
+    hotel.laundry.create_cloth("Skirt", 12.50)
+    hotel.laundry.create_cloth("Shorts", 9.50)
+    hotel.laundry.create_cloth("Blouse", 12.50)
+    hotel.laundry.create_cloth("Sweater Vest", 14.00)
+    hotel.laundry.create_cloth("Scarf", 7.00)
+    hotel.laundry.create_cloth("Tie", 6.50)
+    hotel.laundry.create_cloth("Socks", 8.00)
+    hotel.laundry.create_cloth("Bathrobe", 22.00)
 
 
 ######################
@@ -133,7 +168,7 @@ def checkin_table(booking):
 
 
 def route_card(route): 
-    is_reserved = getattr(route, '_Route__is_booked')
+    is_reserved = route.is_reserved
     button_text = "Already reserved" if is_reserved else "Reserve"
     button_disabled = "disabled" if is_reserved else ""
     button_color = "grey" if is_reserved else "#2196f3"  # blue as default
@@ -153,6 +188,78 @@ def route_card(route):
         ),
         style="box-shadow: 0 4px 8px rgba(0,0,0,0.2); border-radius: 10px; margin: 10px; padding: 10px;"
     )
+
+def food_card(f, cart):
+    cart_quantity = cart.items.get(f.name, {}).get('quantity', 0)
+    is_available = f.amount - cart_quantity > 0
+    button_text = "Add to Cart" if is_available else "Out of Stock"
+    button_disabled = not is_available
+    button_color = "grey" if not is_available else "#2196f3"
+
+    return Card(
+        Div(
+            Div(
+                H3(f.name),
+                P(f"Price: ฿{f.price:.2f}"),
+                P(f"Stock: {f.amount}"),
+                Button(
+                    button_text,
+                    hx_post=f"/foods/add/{f.name}",
+                    hx_target="#dish-list",
+                    style=f"outline: none; margin-top: 10px; padding: 8px 12px; width:120px; background-color:{button_color}; color:white;",
+                    disabled="disabled" if not cart_quantity < f.amount else ""
+                ),
+                style="display:flex; flex-direction:column; justify-content:center; gap:5px; padding-right:15px;"
+            ),
+            Img(src=f.image_url, style="width:200px; height:150px; object-fit:cover; border-radius:8px;"),
+            style="display:flex; justify-content:space-between; align-items:center; width:100%;"
+        ),
+        style="display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 8px rgba(0,0,0,0.2); border-radius:10px; margin:10px; padding:10px;"
+    )
+
+def render_cart_items(cart, removal_url_base):
+    items = []
+    for item in cart.items.values():
+        product = item['product']
+        quantity = item['quantity']
+        remove_button = Button(
+            "X",
+            hx_post=f"{removal_url_base}/{product.name}",
+            hx_target="#cart-display",
+            style="font-size:20px; padding:2px 4px; color:red; background: none; border: none; cursor: pointer;"
+        )
+        items.append(
+            Div(
+                P(f"{product.name} x {quantity} - ฿{product.price * quantity:.2f}"),
+                remove_button,
+                style="display: flex; align-items: center; gap: 10px;"
+            )
+        )
+    if not items:
+        items.append(P("Cart is empty."))
+    return Container(*items)
+
+def render_order_button(cart, order_endpoint):
+    disabled = not bool(cart.items)
+    base_style = "margin-top: 10px; padding: 8px 12px; border: none; font-size: 14px;"
+    if disabled:
+        style = base_style + " background-color: grey; color: white; cursor: not-allowed;"
+    else:
+        style = base_style + " background-color: green; color: white; cursor: pointer;"
+    return Button("Place Order", hx_post=order_endpoint, disabled=disabled, style=style)
+
+def cloth_card(cloth):
+    return Card(
+        H3(cloth.name),
+        P(f"Price: ฿{cloth.price:.2f}"),
+        Button(
+            "Add",
+            hx_post=f"/laundry/add/{cloth.name}", 
+            hx_target="#cloth-list",
+            style="outline: none;"
+        ),
+        style="box-shadow: 0 4px 8px rgba(0,0,0,0.2); border-radius: 10px; margin: 10px; padding: 10px;"
+    )      
 
 
 ######################
@@ -398,7 +505,7 @@ def get(session):
 
 @rt("/profile")
 def get(session):
-    check_login("profile")
+    check_login(session, "profile")
 
     if get_user_role(session) == "Staff":
         return P("You're staff")
@@ -408,7 +515,7 @@ def get(session):
             (menu(session), Br(),
             Container(Card(
                 H1("Profile"),
-                P(f"Username: {user.username}"),
+                P(f"Username: {username}"),
                 P(f"Full Name: {user.real_name}"),
                 P(f"Email: {user.email}"),
                 # Check Booking history
@@ -431,8 +538,8 @@ def get(session):
                             Td(booking.start_date),
                             Td(booking.end_date),
                             Td(booking.status),
-                            Td(Button("View", cls="btn btn-primary", onclick=f"document.location='/booking/{booking.room.room_id}/{booking.start_date}/{booking.end_date}'"))
-                        ) for booking in hotel.bookings if booking.guest.user_id == user.user_id)
+                            Td(Button("View", cls="btn btn-primary", onclick=f"document.location='/profile/booking/{booking.booking_id}'"))
+                        ) for booking in hotel.get_booking_of_guest(user))
                     ),
                     cls="striped"
                 ),
@@ -441,7 +548,55 @@ def get(session):
                 
         )
     ))
-    
+
+
+@rt("/profile/booking/{booking_id}")
+def get(booking_id: int, session):
+    check_login(session, "profile")
+
+    print("links says", booking_id)
+
+    booking = hotel.get_booking_by_id(booking_id)
+    print(booking)
+    if booking is None:
+        return P("Invalid Booking ID")
+
+    return (Title("Booking Reciept"),
+        menu(session), Br(),
+        Container(
+            H1("Booking Reciept", style="text-align: center;"),
+            Card(
+                Img(src=f"/images/{booking.room.image}", cls="card-img-top", alt=f"Room {booking.room.room_id}",
+                style="width: auto; max-height: 300px; object-fit: cover;"),
+                Div(
+                    H2(f"Room {booking.room.room_id}"),
+                    P(f"Room Type: {booking.room.type}"),
+                    P(f"Maximum People: {"👤" * booking.room.size}"),
+                    P(f"Price: ฿{booking.room.price} / Day"),
+                    P(f"Status: {"Available" if booking.room.status == 1 else "Unavailable"}"),
+                    P(f"Commodity: {', '.join(booking.room.things)}"),
+                    cls="card-text",
+                    style="text-align: left; margin-left: 20px;"
+                ),
+                style="width: 100%; margin: 10px 0; display: flex;"
+            ),
+            Card(
+                H2("Booking Details"),
+                P(f"Booking ID: {booking.booking_id}"),
+                P(f"Check-in Date: {booking.start_date.strftime('%Y-%m-%d')}"),
+                P(f"Check-out Date: {booking.end_date.strftime('%Y-%m-%d')}"),
+                P(f"Status: {booking.status}"),
+                style="text-align: center;"
+            ),
+            Card(
+                H2("Payment Details"),
+                P(f"Total Room Price: ฿{(booking.end_date - booking.start_date).days * booking.room.price}"),
+                P(f"Service Call: ฿100"),
+                P(f"Total Price: ฿{(booking.end_date - booking.start_date).days * booking.room.price + 100}"),
+                style="text-align: center;"
+            )
+        )
+    )
 
 @rt("/signup")
 def get(session, request):
@@ -765,8 +920,12 @@ def get(session):
         )
     )
 
+
+
 @rt('/transport')
-def get():
+def get(session):
+    check_login(session, "service")
+
     return Titled("Available Routes",
         Div(
             Input(
@@ -778,20 +937,20 @@ def get():
                 hx_target="#route-list",
                 style="width: 100%; padding: 8px; margin-bottom: 10px;"
             ),
-            Div(*[route_card(route) for route in hotel.transport.routes_list], id="route-list"),
+            Div(*[route_card(route) for route in hotel.transport.get_available_routes()], id="route-list"),
             Div(id="transport-confirmation")
         )
     )
 
 @rt('/transport/search')
-def search(q: str = ""):
+def get(q: str = ""):
     filtered_routes = [route for route in hotel.transport.routes_list if q.lower() in route.name.lower()]
     return Div(*[route_card(route) for route in filtered_routes], id="route-list")
 
 @rt('/transport/reserve/{route_name}')
 def post(route_name: str, session):
     guest_instance = hotel.get_guest_by_id(session["user_id"])
-    order = hotel.transport.confirm_reservation(guest_instance, route_name)
+    order = hotel.transport.create_reservation(guest_instance, route_name)
 
     if order in ["Already booked", "Route not found"]:
         return Div(P(order), hx_swap_oob="outerHTML", id="transport-confirmation")
@@ -805,6 +964,213 @@ def post(route_name: str, session):
         P(f"Your transportation reservation for {route_name} has been confirmed for guest: {guest_instance.username}."),
         hx_swap_oob="outerHTML",
         id="transport-confirmation"
+    )
+
+@rt('/laundry')
+def get(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    return Titled(
+        "Choose Clothes Type",
+        Div(
+            Div(
+                Div(
+                    *[cloth_card(d) for d in hotel.laundry.cloths],
+                    id="cloth-list",
+                    style="overflow-y: auto; max-height: 80vh;"
+                ),
+                style="flex: 3;"
+            ),
+            Div(
+                H3("Your Order"),
+                Div(render_cart_items(user.laundry_cart, "/laundry/remove"), id="cloth_cart_items"),
+                Div(f"Cart Total: ฿{user.laundry_cart.total():.2f}", id="cloth_cart_total"),
+                render_order_button(user.laundry_cart, "/laundry/order"),
+                id="cart-display",
+                style="width: 300px; margin-left: 20px; border-left: 1px solid #ccc; padding-left: 10px; position: sticky; top: 20px;"
+            ),
+            style="display: flex; gap: 20px;"
+        )
+    )
+
+@rt('/laundry/add/{cloth_type}')
+def post(session, cloth_type: str):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    cloth = hotel.laundry.get_cloth_type(cloth_type)
+    if cloth:
+        user.laundry_cart.add(cloth)
+    return (
+        Div(*[cloth_card(d) for d in hotel.laundry.cloths], id="cloth-list"),
+        Div(
+            H3("Your Order:"),
+            Div(render_cart_items(user.laundry_cart, "/laundry/remove"), id="cloth_cart_items"),
+            Div(f"Cart Total: ฿{user.laundry_cart.total():.2f}", id="cloth_cart_total"),
+            render_order_button(user.laundry_cart, "/laundry/order"),
+            hx_swap_oob="outerHTML",
+            id="cart-display"
+        )
+    )
+
+@rt('/laundry/remove/{cloth_type}')
+def post(session, cloth_type: str):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    cloth = hotel.laundry.get_cloth_type(cloth_type)
+
+    if cloth:
+        user.laundry_cart.remove(cloth)
+    return Div(
+        H3("Your Order"),
+        Div(render_cart_items(user.laundry_cart, "/laundry/remove"), id="cloth_cart_items"),
+        Div(f"Cart Total: ฿{user.laundry_cart.total():.2f}", id="cloth_cart_total"),
+        render_order_button(user.laundry_cart, "/laundry/order"),
+        hx_swap_oob="outerHTML",
+        id="cart-display"
+    )
+
+@rt('/laundry/order')
+def post_laundry_order(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    order = hotel.laundry.confirm_order(user, user.laundry_cart)
+
+    user.laundry_cart.clear()
+    return Div(
+         Script("var modal = document.getElementById('orderModal'); modal.style.display = 'block';"),
+         H3(f"Your Laundry Order Confirmed for guest: {user.real_name}"),
+         Div(render_cart_items(user.laundry_cart, "/laundry/remove"), id="cloth_cart_items"),
+         Div(f"Cart Total: ฿{user.laundry_cart.total():.2f}", id="cloth_cart_total"),
+         render_order_button(user.laundry_cart, "/laundry/order"),
+         hx_swap_oob="outerHTML",
+         id="cart-display"
+    )
+
+@rt('/foods')
+def get(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    return Titled(
+        "Choose Menu",
+        Div(
+            Div(
+                Input(
+                    type="text",
+                    name="q",  
+                    placeholder="Search dishes...",
+                    hx_get="/foods/search",
+                    hx_trigger="keyup changed delay:500ms",
+                    hx_target="#dish-list",
+                    style="width: 100%; padding: 8px; margin-bottom: 10px;"
+                ),
+                Div(
+                    *[food_card(d,user.food_cart) for d in hotel.food_ordering.dishes],
+                    id="dish-list",
+                    style="overflow-y: auto; max-height: 80vh;"
+                ),
+                style="flex: 3;"
+            ),
+            Div(
+                H3("Your Cart"),
+                Div(render_cart_items(user.food_cart, "/foods/remove"), id="user.food_cart_items"),
+                Div(f"Cart Total: ฿{user.food_cart.total():.2f}", id="user.food_cart_total"),
+                render_order_button(user.food_cart, "/foods/order"),
+                id="cart-display",
+                style="width: 300px; margin-left: 20px; border-left: 1px solid #ccc; padding-left: 10px; position: sticky; top: 20px;"
+            ),
+            style="display: flex; gap: 20px;"
+        )
+    )
+
+@rt('/foods/search')
+def search(session, q: str = ""):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    filtered_dishes = [d for d in hotel.food_ordering.dishes if q.lower() in d.name.lower()]
+    return Div(*[food_card(d,user.food_cart) for d in filtered_dishes], id="dish-list")
+
+@rt('/foods/add/{dish_name}')
+def post(session, dish_name: str):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    dish = hotel.food_ordering.find_dish(dish_name)
+
+    if dish:
+        current_quantity = user.food_cart.items.get(dish_name, {'quantity': 0})['quantity']
+        if current_quantity < dish.amount:
+            user.food_cart.add(dish)
+
+    return (
+        Div(*[food_card(d, user.food_cart) for d in hotel.food_ordering.dishes], id="dish-list"),
+        Div(
+            H3("Your Cart"),
+            Div(render_cart_items(user.food_cart, "/foods/remove"), id="user.food_cart_items"),
+            Div(f"Cart Total: ฿{user.food_cart.total():.2f}", id="user.food_cart_total"),
+            render_order_button(user.food_cart, "/foods/order"),
+            hx_swap_oob="outerHTML",
+            id="cart-display"
+        )
+    )
+@rt('/foods/remove/{dish_name}')
+def post(session, dish_name: str):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    dish = hotel.food_ordering.find_dish(dish_name)
+    if dish:
+        user.food_cart.remove(dish)
+    return (
+        Div(
+            *[food_card(d, user.food_cart) for d in hotel.food_ordering.dishes],
+            id="dish-list",
+            hx_swap_oob="outerHTML"  # Force the dish list to update
+        ),
+        Div(
+            H3("Your Cart"),
+            Div(render_cart_items(user.food_cart, "/foods/remove"), id="user.food_cart_items"),
+            Div(f"Cart Total: ฿{user.food_cart.total():.2f}", id="user.food_cart_total"),
+            render_order_button(user.food_cart, "/foods/order"),
+            hx_swap_oob="outerHTML",
+            id="cart-display"
+        )
+    )
+
+@rt('/foods/order')
+def post_food_order(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    hotel.food_ordering.create_food_order(user, user.food_cart)
+    
+    user.food_cart.clear()
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/foods', {target: '#main-content'});
+        """),
+        H3(f"Food Order Confirmed for guest: {user.real_name}"),
+        Div(render_cart_items(user.food_cart, "/foods/remove"), id="food_cart_items"),
+        Div(f"Cart Total: ฿{user.food_cart.total():.2f}", id="food_cart_total"),
+        render_order_button(user.food_cart, "/foods/order"),
+        hx_swap_oob="outerHTML",
+        id="cart-display"
     )
 
 serve()

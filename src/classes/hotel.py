@@ -4,11 +4,14 @@ import uuid
 
 class Hotel:
     def __init__(self, Room=None, Booking=None, Guest=None, Staff=None, Floor=None, Things=None):
+        self.__floors = []
         self.__rooms = []
         self.__bookings = []
         self.__guests = []
         self.__staffs = []
         self.__transport = Transport()
+        self.__laundry = Laundry()
+        self.__food_ordering = FoodOrdering()
 
     @property
     def rooms(self):
@@ -29,6 +32,14 @@ class Hotel:
     @property
     def transport(self):
         return self.__transport
+    
+    @property
+    def laundry(self):
+        return self.__laundry
+    
+    @property
+    def food_ordering(self):
+        return self.__food_ordering
 
     def create_room(self, room):
         self.__rooms.append(room)
@@ -85,6 +96,16 @@ class Hotel:
     def create_booking(self, guest, room, start_date, end_date):
         self.bookings.append(Booking(guest, room, start_date, end_date, "Pending"))
         return self.bookings[-1]
+    
+    def get_booking_by_id(self, booking_id):
+        print("BookingID",booking_id)
+        for booking in self.bookings:
+            if booking.booking_id == booking_id:
+                return booking
+        return None
+
+    def get_booking_of_guest(self, guest):
+        return [booking for booking in self.bookings if booking.guest == guest]
     
     def create_guest(self, username, real_name, email, password):
         if any(guest.username == username for guest in self.guests):
@@ -148,7 +169,22 @@ class User:
 class Guest(User):
     def __init__(self, username, real_name, password, email):
         super().__init__(username, real_name, password, email)
-        self.__bookings = []
+        self.__laundry_cart = Cart()
+        self.__food_cart = Cart()
+
+    @property
+    def laundry_cart(self):
+        return self.__laundry_cart
+    
+    def clear_laundry_cart(self):
+        self.__laundry_cart.clear()
+
+    @property
+    def food_cart(self):
+        return self.__food_cart
+    
+    def clear_food_cart(self):
+        self.__food_cart.clear()
 
 
 class Staff(User):
@@ -244,57 +280,78 @@ class Booking():
 class Service:
     def __init__(self, name):
         self.__name = name
+        self.__reservations = []
+
+    @property
+    def reservations(self):
+        return self.__reservations
+    
+    @reservations.setter
+    def reservations(self, reservations):
+        self.__reservations = reservations
+
+
+class ServiceReservation:
+    def __init__(self, guest):
+        self.__guest = guest
+        self.__status = "Pending"
+        self.__timestamp = datetime.now()
+
+    @property
+    def status(self):
+        return self.__status
+    
+    @status.setter
+    def status(self, status):
+        if status in ["Pending", "Complete", "Cancelled"]:
+            self.__status = status
+        else:
+            raise ValueError("Invalid status")
 
 
 # Transport Service #
 class Transport(Service):
     def __init__(self):
         super().__init__("Transport")
-        self.__routes_list = []
-        self.__reservations = []
-        self.__orders = []  # Stores TransportOrder objects
+        self.__routes = []
 
     @property
-    def routes_list(self):
-        return self.__routes_list
+    def routes(self):
+        return self.__routes
 
     def create_route(self, location, staff, time):
-        self.__routes_list.append(Route(location, staff, time))
+        self.__routes.append(Route(location, staff, time))
 
     def find_available_routes(self, search: str):
-        return [p for p in self.__routes_list if search.lower() in p.name.lower()]
+        return [p for p in self.__routes if search.lower() in p.name.lower()]
     
-    def confirm_reservation(self, guest, route_name):
-        for route in self.__routes_list:
+    def get_available_routes(self):
+        return [p for p in self.__routes if not p.is_reserved]
+    
+    def create_reservation(self, guest, route_name):
+        for route in self.__routes:
             if route.name == route_name:
-                # Use name mangling to access __is_booked
-                if getattr(route, '_Route__is_booked'):
+                if route.is_reserved:
                     return "Already booked"
-                setattr(route, '_Route__is_booked', True)
-                order = TransportOrder(guest, route)
-                self.__reservations.append((guest, route))
-                self.__orders.append(order)
-                print(order)  # Debug print to console only
+                route.is_reserved = True
+                order = TransportReservation(guest, route)
+                self.__reservations.append(order)
+                print(order)
                 return order
         return "Route not found"
     
 
-class TransportOrder:
-    def __init__(self, guest, route, timestamp=None):
-        self.__guest = guest
+class TransportReservation(ServiceReservation):
+    def __init__(self, guest, route):
+        super().__init__(guest)
         self.__route = route
-        self.__timestamp = timestamp or datetime.now()
-
-    def __repr__(self):
-        return f"<TransportOrder guest={self.__guest.username} route={self.__route.name}>"
-    
 
 class Route:
     def __init__(self, name, staff, time):
         self.__name = name
         self.__staff = staff
         self.__time = time
-        self.__is_booked = False
+        self.__is_reserved = False
 
     @property
     def name(self):
@@ -307,3 +364,162 @@ class Route:
     @property
     def time(self):
         return self.__time
+    
+    @property
+    def is_reserved(self):
+        return self.__is_reserved
+    
+    @is_reserved.setter
+    def is_reserved(self, status):
+        self.__is_reserved = status
+
+# Laundry Service #
+class Laundry(Service):
+    def __init__(self):
+        super().__init__("Laundry")
+        self.__cloths = []
+        self.__orders = []  # Stores LaundryOrder objects
+
+    @property
+    def cloths(self):
+        return self.__cloths
+
+    def create_cloth(self, type, price):    
+        self.__cloths.append(Cloth(type, price))
+
+    def get_cloth_type(self, type_name):
+        for cloth in self.__cloths:
+            if cloth.name == type_name:
+                return cloth
+        return None
+
+    def confirm_order(self, guest, cart):
+        order = LaundryReservation(guest, cart.items.copy(), cart.total())
+        self.__orders.append(order)
+        print("Laundry order confirmed:", order)  # Debug print to console only
+        return order
+    
+
+class LaundryReservation(ServiceReservation):
+    def __init__(self, guest, items, total):
+        super().__init__(guest)
+        # Use the same generic key "product" so that for cloth items, it shows the cloth name
+        self.__items = [{"name": item["product"].name, "amount": item["quantity"]} for item in items.values()]
+        self.__total = total
+
+
+class Cloth:
+    def __init__(self, name, price):
+        self.__name = name
+        self.__price = price
+
+    @property
+    def name(self):
+        return self.__name
+    
+    @property
+    def price(self):
+        return self.__price
+
+
+class FoodOrdering(Service):
+    def __init__(self):
+        super().__init__("Food Ordering")
+        self.__dishes = []
+
+    @property
+    def dishes(self):
+        return self.__dishes
+
+    def find_dish(self, dish_name):
+        for dish in self.__dishes:
+            if dish.name == dish_name:
+                return dish
+        return None
+
+
+    def restock(self, name, amount):
+        dish = self.find_dish(name)
+        if dish is None:
+            return "Error"
+        else:
+            dish.amount += amount
+
+    def add_new_menu(self, name, price, image_url):
+        self.__dishes.append(Dish(name, price, image_url))
+
+    def create_food_order(self, guest, cart):
+        order = FoodReservation(guest, cart.items.copy(), cart.total())
+        self.reservations.append(order)
+        
+        for item in cart.items.values():
+            dish = item['product']
+            quantity = item['quantity']
+            found_dish = self.find_dish(dish.name)
+            if found_dish:
+                found_dish.amount -= quantity
+
+        print("Food order confirmed:", order)
+        return order
+
+class FoodReservation(ServiceReservation):
+    def __init__(self, guest, items, total):
+        super().__init__(guest)
+        self.__items = [{"name": item["product"].name, "amount": item["quantity"]} for item in items.values()]
+        self.__total = total
+
+
+class Dish:
+    def __init__(self, name, price, image_url):
+        self.__name = name
+        self.__price = price
+        self.__amount = 0
+        self.__image_url = image_url
+
+    @property
+    def name(self):
+        return self.__name
+    
+    @property
+    def price(self):
+        return self.__price
+    
+    @property
+    def amount(self):
+        return self.__amount
+    
+    @property
+    def image_url(self):
+        return self.__image_url
+
+    @amount.setter
+    def amount(self, amount):
+        self.__amount = amount
+
+class Cart:
+    def __init__(self):
+        self.__items = {}
+
+    @property
+    def items(self):
+        return self.__items
+
+    def add(self, product):
+        if product.name in self.__items:
+            self.__items[product.name]['quantity'] += 1
+        else:
+            # Store the product under the key "product" instead of "dish"
+            self.__items[product.name] = {'product': product, 'quantity': 1}
+
+    def remove(self, product):
+        if product.name in self.items:
+            if self.__items[product.name]['quantity'] > 1:
+                self.__items[product.name]['quantity'] -= 1
+            else:
+                del self.__items[product.name]
+
+    def total(self) -> float:
+        return sum(item['product'].price * item['quantity'] for item in self.items.values())
+    
+    def clear(self):
+        self.__items = {}
