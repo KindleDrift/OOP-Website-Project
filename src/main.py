@@ -1,5 +1,5 @@
 from fasthtml.common import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from classes.hotel import *
 
 app, rt = fast_app(debug=False, secret_key="secret")
@@ -24,10 +24,10 @@ def create_instance():
     hotel.create_guest("JohnDoe", "John Doe", "john.d@domain.xyz", "password")
     hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@domain.xyz", "password")
 
-    hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(101), datetime.today(), datetime.today() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(102), datetime.today(), datetime.today() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(103), datetime.today(), datetime.today() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(104), datetime.today(), datetime.today() + timedelta(days=1))
+    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(101), datetime.today().date(), datetime.today().date() + timedelta(days=1))
+    hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(102), datetime.today().date(), datetime.today().date() + timedelta(days=1))
+    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(103), datetime.today().date(), datetime.today().date() + timedelta(days=1))
+    hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(104), datetime.today().date(), datetime.today().date() + timedelta(days=1))
 
     driver = hotel.get_staff_by_id(2)
     hotel.transport.create_route("Airport", driver, "10:00 AM")
@@ -90,6 +90,7 @@ def menu(session):
                 Div(
                     A("Home", href="/", cls="secondary"),
                     A("Room", href="/rooms", cls="secondary"),
+                    A("Services", href="/services", cls="secondary"),
                     cls="navbar-links",
                     style="display: flex; gap: 15px; text-align: center; font-weight: 800;"
                     
@@ -124,7 +125,7 @@ def display_room(room: Room, start_date, end_date):
                 Input(type="hidden", name="room-id", value=room.room_id),
                 Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary",
                     style="font-weight: bold;"),
-                action="/booking/review",
+                action=f"/booking/review/{room.room_id}",
                 method="GET"
             ),
 
@@ -156,14 +157,14 @@ def reciept_card(room: Room, start_date, end_date):
     )
 
 
-def checkin_table(booking):
+def checkin_table(booking: Booking):
     return Tr(
                 Td(booking.booking_id),
                 Td(booking.room.room_id),
-                Td(booking.guest.name),
+                Td(booking.guest.real_name),
                 Td(booking.start_date),
                 Td(booking.end_date),
-                Td(Button("Check In", cls="btn btn-primary", onclick="document.location='/staff/check-in/{booking.room.room_id}/{booking.guest.name}/{booking.start_date}/{booking.end_date}'"))
+                Td(Button("Check In", cls="btn btn-primary", hx_post=f"/staff/check-in/{booking.booking_id}"))
             )
 
 
@@ -274,6 +275,12 @@ def get_user_role(session):
     if "user_id" not in session:
         return None
     return hotel.get_role_by_id(session["user_id"])
+
+
+def check_if_currently_staying(session):
+    if "user_id" not in session:
+        return False
+    return hotel.get_guest_by_id(session["user_id"]).current_booking is not None
 
 
 
@@ -395,6 +402,10 @@ async def post(session, request):
 
     return Div(*(display_room(room, start_date, end_date) for room in matching_hotel))
 
+
+
+
+
 @rt("/rooms")
 def get():
     return Titled(
@@ -406,8 +417,8 @@ def get():
     )
 
 
-@rt("/booking/review")
-async def get(session, request):
+@rt("/booking/review/{room_id}")
+async def get(session, request, room_id: int):
     print("login")
     check_login(session, "booking")
 
@@ -463,10 +474,11 @@ async def get(session, request):
     )
 
 
-@rt("/booking/review")
-async def post(session, request):
+@rt("/booking/review/{room_id}")
+async def post(session, request, room_id: int):
     form_data = await request.form()
-    room_id = int(request.query_params.get("room-id"))
+
+    room_id = room_id
     name = form_data.get("full-name")
     card_number = form_data.get("credit-card")
     expiration_month = int(form_data.get("expiration-month"))
@@ -515,7 +527,7 @@ def get(session):
             (menu(session), Br(),
             Container(Card(
                 H1("Profile"),
-                P(f"Username: {username}"),
+                P(f"Username: {user.username}"),
                 P(f"Full Name: {user.real_name}"),
                 P(f"Email: {user.email}"),
                 # Check Booking history
@@ -553,8 +565,6 @@ def get(session):
 @rt("/profile/booking/{booking_id}")
 def get(booking_id: int, session):
     check_login(session, "profile")
-
-    print("links says", booking_id)
 
     booking = hotel.get_booking_by_id(booking_id)
     print(booking)
@@ -725,72 +735,83 @@ def get(session):
 @rt("")
 
 
-@rt("/staff/")
+@rt("/staff")
 def get(session):
-    if "user_id" not in session:
-        return login_redir("staff")
+    check_login(session, "")
+
     for staff in hotel.staffs:
         if staff.user_id == session["user_id"]:
-            return Titled("Staff Home",
+            return Title("Staff Home"), (menu(session), Br(),
                 Container(
-                    H1("Staff Home"),
-                    P("Welcome to the staff home page"),
-                    A("Room Management", href="/staff/room-management"),
-                    A("Check-in", href="/staff/check-in"),
-                    style="text-align: center;"
+                    Card(
+                        H1("Staff Home"),
+                        P("Welcome to the staff home page"),
+                        # Link
+                        H2("Staff Services"),
+                        A("Room Management", href="/staff/room-management"), Br(),
+                        A("Check In", href="/staff/check-in"), Br(),
+                        A("Check Out", href="/staff/check-out"), Br(),
+                        A("Assigned Service", href="/staff/service"), Br(),
+                        style="text-align: center;"
+                    )
                 )
             )
     return RedirectResponse("/", status_code=303)
 
 
-# @rt("/staff/room-management")
-# async def get():
-#     return Titled("Room Editor",
-#         Container(
-#             H1("Room Editor"),
-#             H2("Add Room"),
-#             Form(
-#                 Label("Room ID"),
-#                 Input(type="number", name="room-id", required=True),
-#                 Label("Room Type"),
-#                 Select(
-#                     Option("Single", value="Single"),
-#                     Option("Double", value="Double"),
-#                     Option("Family", value="Family"),
-#                     Option("Suite", value="Suite"),
-#                     name="room-type",
-#                     requires=True
-#                 ),
-#                 Label("Size"),
-#                 Input(type="number", name="size", required=True),
-#                 Label("Price"),
-#                 Input(type="number", name="price", required=True),
-#                 Label("Status"),
-#                 Select(
-#                     Option("Available", value="1"),
-#                     Option("Unavailable", value="0"),
-#                     name="status",
-#                     required=True
-#                 ),
-#                 Label("Things"),
-#                 Input(type="text", name="things", required=True),
-#                 Label("Image"),
-#                 Input(type="text", name="image", required=True
-#                 ),
-#                 Button("Add", type="submit", cls="btn btn-primary", hx_post=f"/add-room/", hx_target="#return-message"),
-#                 id="room-filter",
-#                 style=""
-#             ),
-#             P(id="return-message"),
-#             H2("Edit Room"),
-#         )
-#     )
+@rt("/staff/room-management")
+async def get(session):
+    return Title("Room Editor"), menu(session), Br(), Container(
+            H1("Room Editor"),
+            H2("Add Room"),
+            Form(
+                Label("Room ID"),
+                Input(type="number", name="room-id", required=True),
+                Label("Room Type"),
+                Select(
+                    Option("Single", value="Single"),
+                    Option("Double", value="Double"),
+                    Option("Family", value="Family"),
+                    Option("Suite", value="Suite"),
+                    name="room-type",
+                    requires=True
+                ),
+                Label("Size"),
+                Input(type="number", name="size", required=True),
+                Label("Price"),
+                Input(type="number", name="price", required=True),
+                Label("Status"),
+                Select(
+                    Option("Available", value="1"),
+                    Option("Unavailable", value="0"),
+                    name="status",
+                    required=True
+                ),
+                Label("Things"),
+                Input(type="text", name="things", required=True),
+                Label("Image"),
+                Input(type="text", name="image", required=True
+                ),
+                Button("Add", type="submit", cls="btn btn-primary", hx_post=f"/add-room", hx_target="#return-message"),
+                id="room-filter",
+                style=""
+            ),
+            P(id="return-message"),
+            H2("Edit Room"),
+            Form(
+                Label("Room ID"),
+                Input(type="number", name="room-id", required=True),
+            )
+        )
+    
 
 
 @rt("/staff/check-in")
 def get(session):
-    if "user_id" not in session:
-        return login_redir("staff/check-in")
+    check_login(session, "")
+
+    valid_booking = hotel.filter_check_in()
+
     for staff in hotel.staffs:
         if staff.user_id == session["user_id"]:
             return (Title("Check In"),
@@ -799,12 +820,12 @@ def get(session):
                 Container(
                     H1("Check In"),
                     Form(
-                        Group(Input(type="number", name="room-id", required=True),
-                            Input(type="text", name="guest-name", required=True),
-                            Input(type="date", name="check-in-date", required=True),
-                            Input(type="date", name="check-out-date", required=True),
-                            Button("Search", type="submit", cls="btn btn-primary", hx_post="/staff/check-in", hx_target="#return-message"),
-                            id="return-message")
+                        Group(Input(type="number", name="room-id", placeholder="Room ID"),
+                            Input(type="text", name="guest-name", placeholder="Guest Name"),
+                            Input(type="date", name="check-in-date"),
+                            Input(type="date", name="check-out-date"),
+                            Button("Search", type="submit", cls="btn btn-primary", hx_post="/staff/check-in", hx_target="#table-body"),
+                            id="check-in-form")
                     ), Hr(),
                     Table(
                         Thead(
@@ -817,33 +838,59 @@ def get(session):
                             Th("Action")
                         )
                     ),
-                    Tbody(*(checkin_table(booking) for booking in hotel.bookings)), cls="striped"),
+                    Tbody(*(checkin_table(booking) for booking in valid_booking), id="table-body"), cls="striped"),
                     style="text-align: center;"
                 
             ))
     return RedirectResponse("/", status_code=303)
 
+@rt("/staff/check-in")
+async def post(request, session):
+    check_login(session, "")
 
-# @rt("/add-room/")
-# async def post(request):
-#     form_data = await request.form()
-#     room_id = form_data.get("room-id")
-#     room_type = form_data.get("room-type")
-#     size = form_data.get("size")
-#     price = form_data.get("price")
-#     status = form_data.get("status")
-#     things = form_data.get("things")
-#     image = form_data.get("image")
+    try:
+        form_data = await request.form()
+        # optional parameter
+        room_id = int(form_data.get("room-id")) if form_data.get("room-id") else None
+        guest_name = form_data.get("guest-name") if form_data.get("guest-name") else None
+        check_in_date = datetime.strptime(form_data.get("check-in-date"), "%Y-%m-%d") if form_data.get("check-in-date") else None
+        check_out_date = datetime.strptime(form_data.get("check-out-date"), "%Y-%m-%d") if form_data.get("check-out-date") else None
+    except:
+        return Tbody(Tr(Td("Invalid Form Data", colspan=6)), id="table-body")
 
-#     if (room_id in [room.room_id for room in hotel.rooms]):
-#         return P("Room ID, try another ID")
+    valid_booking = hotel.filter_check_in(room_id, guest_name, check_in_date, check_out_date)
+
+    return [*(checkin_table(booking) for booking in valid_booking)]
+
+
+@rt("/staff/check-in/{booking_id}")
+def post(booking_id: int, session):
+    check_login(session, "")
+
+    hotel.check_in_guest(booking_id)
+
+    return Redirect("/staff/check-in")
+
+@rt("/add-room")
+async def post(request):
+    form_data = await request.form()
+    room_id = form_data.get("room-id")
+    room_type = form_data.get("room-type")
+    size = form_data.get("size")
+    price = form_data.get("price")
+    status = form_data.get("status")
+    things = form_data.get("things")
+    image = form_data.get("image")
+
+    if (room_id in [room.room_id for room in hotel.rooms]):
+        return P("Room ID, try another ID")
     
-#     hotel.create_room(Room(room_id, room_type, size, price, status, things.split(","), image))
+    hotel.create_room(room_id, room_type, size, price, status, things, image)
 
-#     return P("Room Added")
+    return P("Room Added")
 
 
-@rt('/service')
+@rt('/services')
 def get(session):
     check_login(session, "service")
 
@@ -949,8 +996,10 @@ def get(q: str = ""):
 
 @rt('/transport/reserve/{route_name}')
 def post(route_name: str, session):
-    guest_instance = hotel.get_guest_by_id(session["user_id"])
-    order = hotel.transport.create_reservation(guest_instance, route_name)
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+    order = hotel.transport.create_reservation(user, route_name)
 
     if order in ["Already booked", "Route not found"]:
         return Div(P(order), hx_swap_oob="outerHTML", id="transport-confirmation")
@@ -961,7 +1010,7 @@ def post(route_name: str, session):
             htmx.ajax('GET', '/transport', {target: '#main-content'});
         """),
         H3("Reservation Confirmed"),
-        P(f"Your transportation reservation for {route_name} has been confirmed for guest: {guest_instance.username}."),
+        P(f"Your transportation reservation for {route_name} has been confirmed for guest: {user.username}."),
         hx_swap_oob="outerHTML",
         id="transport-confirmation"
     )
@@ -1172,5 +1221,182 @@ def post_food_order(session):
         hx_swap_oob="outerHTML",
         id="cart-display"
     )
+
+@rt('/cleaning')
+def cleaning_page(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    today = datetime.today()
+    min_date = today + timedelta(days=1)
+    max_date = today + timedelta(days=3)
+    
+    return Titled("Cleaning Service Appointment",
+        Form(
+            Div(
+                H3("Schedule a Cleaning Appointment"),
+                Input(
+                    type="date", 
+                    name="appointment_date", 
+                    min=f"{min_date.strftime('%Y-%m-%d')}",
+                    max=f"{max_date.strftime('%Y-%m-%d')}",
+                    placeholder="Select a date", 
+                    style="margin-bottom: 10px;",
+                    required=True
+                ),
+                Select(
+                    Option("07:00", value="07:00"),
+                    Option("08:00", value="08:00"),
+                    Option("09:00", value="09:00"),
+                    Option("10:00", value="10:00"),
+                    Option("11:00", value="11:00"),
+                    Option("12:00", value="12:00"),
+                    Option("13:00", value="13:00"),
+                    Option("14:00", value="14:00"),
+                    Option("15:00", value="15:00"),
+                    Option("16:00", value="16:00"),
+                    Option("17:00", value="17:00"),
+                    Option("18:00", value="18:00"),
+                    name="appointment_time",
+                    style="margin-bottom: 10px;",
+                    required=True
+                ),
+                Button(
+                    "Confirm Appointment", 
+                    type="submit",
+                    hx_post="/cleaning/confirm", 
+                    hx_target="#cleaning-confirmation", 
+                    hx_swap="outerHTML",
+                    id="cleaning-confirm-btn",
+                    disabled=True,
+                    style="margin-top: 10px;"
+                )
+            ),
+            id="cleaning-form",
+            oninput="document.getElementById('cleaning-confirm-btn').disabled = !this.checkValidity();"
+        ),
+        Div(id="cleaning-confirmation")
+    )
+
+@rt('/cleaning/confirm')
+def confirm_cleaning(session, appointment_date: str, appointment_time: str):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    today = datetime.today()
+    min_date = today + timedelta(days=1)
+    max_date = today + timedelta(days=3)
+
+    try:
+        date.fromisoformat(appointment_date)
+    except ValueError:
+        msg = "The provided appointment date is invalid."
+        html = f"<h3>Invalid Date</h3><p>{msg}</p><button onclick=\"document.getElementById('orderModal').style.display='none';\">Close</button>"
+        return Div(
+            Script(f"document.getElementById('orderModal').innerHTML = `{html}`; document.getElementById('orderModal').style.display = 'block';"),
+            Script("htmx.ajax('GET', '/cleaning', {target: '#main-content'});")
+        )
+    
+    # Check for existing appointment in the open period.
+    for order in hotel.cleaning.reservations:
+        if order.guest.real_name == user.real_name:
+            existing_date = date.fromisoformat(order.appointment_date)
+            if min_date.date() <= existing_date <= max_date.date():
+                msg = f"You already have an appointment on {order.appointment_date} at {order.appointment_time}."
+                html = f"<h3>Appointment Denied</h3><p>{msg}</p><button onclick=\"document.getElementById('orderModal').style.display='none';\">Close</button>"
+                return Div(
+                    Script(f"document.getElementById('orderModal').innerHTML = `{html}`; document.getElementById('orderModal').style.display = 'block';"),
+                    Script("htmx.ajax('GET', '/cleaning', {target: '#main-content'});")
+                )
+    
+    # No conflict, confirm the appointment.
+    order = hotel.cleaning.confirm_order(user, appointment_date, appointment_time)
+    msg = f"Your cleaning appointment is scheduled on {appointment_date} at {appointment_time}."
+    html = f"<h3>Appointment Confirmed</h3><p>{msg}</p><button onclick=\"document.getElementById('orderModal').style.display='none';\">Close</button>"
+    return Div(
+         Script(f"document.getElementById('orderModal').innerHTML = `{html}`; document.getElementById('orderModal').style.display = 'block';"),
+         Script("htmx.ajax('GET', '/cleaning', {target: '#main-content'});")
+    )
+
+
+@rt('/repair')
+def repair_page(session):
+    check_login(session, "service")
+
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    today = datetime.today()
+    min_date = today + timedelta(days=1)
+    max_date = today + timedelta(days=3)
+    return Titled("Repair Service Appointment",
+        Form(
+            Div(
+                H3("Schedule a Repair Appointment"),
+                Input(
+                    type="date", 
+                    name="appointment_date", 
+                    min=f"{min_date.isoformat()}",
+                    max=f"{max_date.isoformat()}",
+                    placeholder="Select a date", 
+                    style="margin-bottom: 10px;",
+                    required=True
+                ),
+                Select(
+                    Option("07:00", value="07:00"),
+                    Option("08:00", value="08:00"),
+                    Option("09:00", value="09:00"),
+                    Option("10:00", value="10:00"),
+                    Option("11:00", value="11:00"),
+                    Option("12:00", value="12:00"),
+                    Option("13:00", value="13:00"),
+                    Option("14:00", value="14:00"),
+                    Option("15:00", value="15:00"),
+                    Option("16:00", value="16:00"),
+                    Option("17:00", value="17:00"),
+                    Option("18:00", value="18:00"),
+                    name="appointment_time",
+                    style="margin-bottom: 10px;",
+                    required=True
+                ),
+                Input(
+                    type="text", 
+                    name="repair_issue", 
+                    placeholder="Describe what needs repair", 
+                    style="margin-bottom: 10px;",
+                    required=True
+                ),
+                Button(
+                    "Confirm Appointment", 
+                    type="submit",
+                    hx_post="/repair/confirm", 
+                    hx_target="#repair-confirmation", 
+                    hx_swap="outerHTML",
+                    id="repair-confirm-btn",
+                    disabled=True,
+                    style="margin-top: 10px;"
+                )
+            ),
+            id="repair-form",
+            oninput="document.getElementById('repair-confirm-btn').disabled = !this.checkValidity();"
+        ),
+        Div(id="repair-confirmation")
+    )
+
+@rt('/repair/confirm')
+def confirm_repair(session, appointment_date: str, appointment_time: str, repair_issue: str):
+    user = hotel.get_guest_by_id(session["user_id"])
+
+    # (Optional: add any additional validation if needed)
+    hotel.repair_service.create_reservation(user, appointment_date, appointment_time, repair_issue)
+    msg = f"Your repair appointment is scheduled on {appointment_date} at {appointment_time} with issue: {repair_issue}."
+    html = f"<h3>Appointment Confirmed</h3><p>{msg}</p><button onclick=\"document.getElementById('orderModal').style.display='none';\">Close</button>"
+    return Div(
+         Script(f"document.getElementById('orderModal').innerHTML = `{html}`; document.getElementById('orderModal').style.display = 'block';"),
+         Script("htmx.ajax('GET', '/repair', {target: '#main-content'});")
+    )
+
+
 
 serve()

@@ -1,5 +1,5 @@
 from fasthtml.common import *
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 import uuid
 
 class Hotel:
@@ -12,6 +12,8 @@ class Hotel:
         self.__transport = Transport()
         self.__laundry = Laundry()
         self.__food_ordering = FoodOrdering()
+        self.__cleaning = CleaningService()
+        self.__repair_service = RepairService()
 
     @property
     def rooms(self):
@@ -40,6 +42,52 @@ class Hotel:
     @property
     def food_ordering(self):
         return self.__food_ordering
+
+    @property
+    def cleaning(self):
+        return self.__cleaning
+    
+    @property
+    def repair_service(self):
+        return self.__repair_service
+
+    def check_in_guest(self, booking_id):
+        booking = self.get_booking_by_id(booking_id)
+        if booking is None:
+            return "Booking not found"
+        if booking.status == "Staying":
+            return "Guest already checked in"
+        if booking.status == "Cancelled":
+            return "Booking cancelled"
+        booking.status = "Staying"
+        return "Success"
+
+
+    def filter_check_in(self, room_id=None, guest_name=None, check_in_date=None, check_out_date=None):
+        valid_booking = []
+        
+        for booking in self.bookings:
+            if booking.status == "Staying" or booking.status == "Cancelled" or booking.status == "Checked Out":
+                continue
+
+            # Room ID filter
+            room_match = (room_id is None or booking.room.room_id == room_id)
+            
+            # Guest Name filter
+            guest_match = (guest_name is None or booking.guest.real_name == guest_name)
+            
+            # Date Range filter (allows None values separately)
+            date_match = (
+                (check_in_date is None or check_out_date is None) or  # If either is None, allow any date
+                (booking.start_date <= check_out_date and booking.end_date >= check_in_date)  # Correct overlap check
+            )
+
+            # If all filters match, add to results
+            if room_match and guest_match and date_match:
+                valid_booking.append(booking)
+
+        return valid_booking
+
 
     def create_room(self, room):
         self.__rooms.append(room)
@@ -71,13 +119,12 @@ class Hotel:
                 return staff
         return None
 
-    def get_room_by_attribute(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
+    def get_room_by_attribute(self, room_type=None, guest_count=None, max_budget_per_day=None, things=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
-            print("GetROOM",room.room_id)
             if (room.status == 1) and \
                 (room.type == room_type or room_type == "All") and \
-                (room.size >= size) and (room.price <= max_price) and \
+                (room.size >= guest_count) and (room.price <= max_budget_per_day) and \
                 ((all(thing in room.things for thing in things) or things == [None])) and \
                 (self.check_room_availability(room.room_id, start_date, end_date)):
                 returned_room.append(room)
@@ -87,9 +134,9 @@ class Hotel:
         room = self.get_room_by_id(room_id)
         for booking in self.bookings:
             if booking.room == room and (booking.status == "Staying" or booking.status == "Pending"):
-                if (booking.start_date <= start_date and booking.end_date >= start_date) or \
-                    (booking.start_date <= end_date and booking.end_date >= end_date) or \
-                    (booking.start_date >= start_date and booking.end_date <= end_date):
+                if (booking.start_date <= start_date.date() and booking.end_date >= start_date.date()) or \
+                    (booking.start_date <= end_date.date() and booking.end_date >= end_date.date()) or \
+                    (booking.start_date >= start_date.date() and booking.end_date <= end_date.date()):
                     return False
         return True
     
@@ -275,6 +322,10 @@ class Booking():
     def status(self):
         return self.__status
     
+    @status.setter
+    def status(self, status):
+        self.__status = status
+    
 
 # ----- Service Related Classes ----- #
 class Service:
@@ -296,6 +347,10 @@ class ServiceReservation:
         self.__guest = guest
         self.__status = "Pending"
         self.__timestamp = datetime.now()
+
+    @property
+    def guest(self):
+        return self.__guest
 
     @property
     def status(self):
@@ -422,6 +477,7 @@ class Cloth:
         return self.__price
 
 
+# Cleaning Service #
 class FoodOrdering(Service):
     def __init__(self):
         super().__init__("Food Ordering")
@@ -496,6 +552,7 @@ class Dish:
     def amount(self, amount):
         self.__amount = amount
 
+
 class Cart:
     def __init__(self):
         self.__items = {}
@@ -523,3 +580,48 @@ class Cart:
     
     def clear(self):
         self.__items = {}
+
+
+# Cleaning Service #
+class CleaningService(Service):
+    def __init__(self):
+        super().__init__("Cleaning Service")
+
+    def confirm_order(self, guest, appointment_date, appointment_time):
+        order = CleaningReservation(guest, appointment_date, appointment_time)
+        self.reservations.append(order)
+        print("Cleaning appointment confirmed:", order)  # Debug print to console only
+        return order
+    
+
+class CleaningReservation(ServiceReservation):
+    def __init__(self, guest, appointment_date, appointment_time):
+        super().__init__(guest)
+        self.__appointment_date = appointment_date
+        self.__appointment_time = appointment_time
+
+    @property
+    def appointment_date(self):
+        return self.__appointment_date
+    
+    @property
+    def appointment_time(self):
+        return self.__appointment_time
+
+# Repair Service #
+class RepairService(Service):
+    def __init__(self):
+        super().__init__("Repair Service")
+
+    def create_reservation(self, guest, appointment_date, appointment_time, repair_issue):
+        order = RepairReservation(guest, appointment_date, appointment_time, repair_issue)
+        self.reservations.append(order)
+        return order
+    
+
+class RepairReservation(ServiceReservation):
+    def __init__(self, guest, appointment_date, appointment_time, repair_issue):
+        super().__init__(guest)
+        self.__appointment_date = appointment_date
+        self.__appointment_time = appointment_time
+        self.__repair_issue = repair_issue
