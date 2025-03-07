@@ -8,6 +8,7 @@ class Hotel:
         self.__bookings = []
         self.__guests = []
         self.__staffs = []
+        self.__transport = Transport()
 
     @property
     def rooms(self):
@@ -24,8 +25,12 @@ class Hotel:
     @property
     def staffs(self):
         return self.__staffs
+    
+    @property
+    def transport(self):
+        return self.__transport
 
-    def add_room(self, room):
+    def create_room(self, room):
         self.__rooms.append(room)
 
     def get_room_by_id(self, room_id):
@@ -34,13 +39,28 @@ class Hotel:
                 return room
         return None
     
+    def get_role_by_id(self, user_id):
+        for guest in self.__guests:
+            if guest.user_id == user_id:
+                return "Guest"
+        for staff in self.__staffs:
+            if staff.user_id == user_id:
+                return "Staff"
+        return None
+
     def get_guest_by_id(self, guest_id):
         for guest in self.__guests:
             if guest.user_id == guest_id:
                 return guest
         return None
     
-    def get_room(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
+    def get_staff_by_id(self, staff_id):
+        for staff in self.__staffs:
+            if staff.user_id == staff_id:
+                return staff
+        return None
+
+    def get_room_by_attribute(self, room_type=None, size=None, max_price=None, things=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
             print("GetROOM",room.room_id)
@@ -91,12 +111,13 @@ class Hotel:
                 return staff
         return None
     
+    
 
 class User:
     __id_counter = 1
-    def __init__(self, name, real_name, email, password):
+    def __init__(self, username, real_name, email, password):
         self.__user_id = User.__id_counter
-        self.__username = name
+        self.__username = username
         self.__real_name = real_name
         self.__email = email
         self.__password = password
@@ -125,14 +146,14 @@ class User:
 
 
 class Guest(User):
-    def __init__(self, name, real_name, password, email):
-        super().__init__(name, real_name, password, email)
+    def __init__(self, username, real_name, password, email):
+        super().__init__(username, real_name, password, email)
         self.__bookings = []
 
 
 class Staff(User):
-    def __init__(self, name, real_name, password, email):
-        super().__init__(name, real_name, password, email)
+    def __init__(self, username, real_name, password, email):
+        super().__init__(username, real_name, password, email)
 
 
 class Floor:
@@ -219,3 +240,70 @@ class Booking():
         return self.__status
     
 
+# ----- Service Related Classes ----- #
+class Service:
+    def __init__(self, name):
+        self.__name = name
+
+
+# Transport Service #
+class Transport(Service):
+    def __init__(self):
+        super().__init__("Transport")
+        self.__routes_list = []
+        self.__reservations = []
+        self.__orders = []  # Stores TransportOrder objects
+
+    @property
+    def routes_list(self):
+        return self.__routes_list
+
+    def create_route(self, location, staff, time):
+        self.__routes_list.append(Route(location, staff, time))
+
+    def find_available_routes(self, search: str):
+        return [p for p in self.__routes_list if search.lower() in p.name.lower()]
+    
+    def confirm_reservation(self, guest, route_name):
+        for route in self.__routes_list:
+            if route.name == route_name:
+                # Use name mangling to access __is_booked
+                if getattr(route, '_Route__is_booked'):
+                    return "Already booked"
+                setattr(route, '_Route__is_booked', True)
+                order = TransportOrder(guest, route)
+                self.__reservations.append((guest, route))
+                self.__orders.append(order)
+                print(order)  # Debug print to console only
+                return order
+        return "Route not found"
+    
+
+class TransportOrder:
+    def __init__(self, guest, route, timestamp=None):
+        self.__guest = guest
+        self.__route = route
+        self.__timestamp = timestamp or datetime.now()
+
+    def __repr__(self):
+        return f"<TransportOrder guest={self.__guest.username} route={self.__route.name}>"
+    
+
+class Route:
+    def __init__(self, name, staff, time):
+        self.__name = name
+        self.__staff = staff
+        self.__time = time
+        self.__is_booked = False
+
+    @property
+    def name(self):
+        return self.__name
+    
+    @property
+    def staff(self):
+        return self.__staff
+    
+    @property
+    def time(self):
+        return self.__time

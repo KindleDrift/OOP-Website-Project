@@ -3,37 +3,40 @@ from datetime import datetime, timedelta
 from dataclasses import dataclass
 from classes.hotel import *
 
-app, rt = fast_app(debug=False)
+app, rt = fast_app(debug=False, secret_key="secret")
 
 def create_instance():
     #temporary create an instance of room
     global hotel
     hotel = Hotel()
-    hotel.add_room(Room(101, "Single", 1, 100, 1, ["AC", "Wifi"], "room1.jpg"))
-    hotel.add_room(Room(102, "Double", 2, 150, 1, ["TV", "AC", "Wifi"], "room2.jpg"))
-    hotel.add_room(Room(103, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room3.jpg"))
-    hotel.add_room(Room(104, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room4.jpg"))
-    hotel.add_room(Room(105, "Single", 1, 100, 1, ["TV", "AC", "Wifi"], "room5.jpg"))
-    hotel.add_room(Room(106, "Double", 2, 150, 1, ["AC", "Wifi"], "room6.jpg"))
-    hotel.add_room(Room(107, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room7.jpg"))
-    hotel.add_room(Room(108, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room8.jpg"))
+    hotel.create_room(Room(101, "Single", 1, 100, 1, ["AC", "Wifi"], "room1.jpg"))
+    hotel.create_room(Room(102, "Double", 2, 150, 1, ["TV", "AC", "Wifi"], "room2.jpg"))
+    hotel.create_room(Room(103, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room3.jpg"))
+    hotel.create_room(Room(104, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room4.jpg"))
+    hotel.create_room(Room(105, "Single", 1, 100, 1, ["TV", "AC", "Wifi"], "room5.jpg"))
+    hotel.create_room(Room(106, "Double", 2, 150, 1, ["AC", "Wifi"], "room6.jpg"))
+    hotel.create_room(Room(107, "Family", 4, 200, 1, ["TV", "AC", "Wifi"], "room7.jpg"))
+    hotel.create_room(Room(108, "Suite", 6, 300, 1, ["TV", "AC", "Wifi"], "room8.jpg"))
 
     # user account
     hotel.create_guest("JohnDoe", "John Doe", "john.d@domain.xyz", "password")
     hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@domain.xyz", "password")
     hotel.create_staff("admin", "Joe Hill", "joe.h@cozyhotel.com", "password")
+    hotel.create_staff("DriverJoe", "Joe Speed", "joe.s@cozyhotel.com", "password")
 
     hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(101), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(102), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(103), datetime.today(), datetime.today() + timedelta(days=1))
     hotel.create_booking(hotel.get_guest_by_id(2), hotel.get_room_by_id(104), datetime.today(), datetime.today() + timedelta(days=1))
 
-    print("---")
-    for user in hotel.guests:
-        print(user.username, user.user_id)
-    for user in hotel.staffs:
-        print(user.username, user.user_id)
-    print("---")
+    driver = hotel.get_staff_by_id(4)
+    hotel.transport.create_route("Airport", driver, "10:00 AM")
+    hotel.transport.create_route("City Tour", driver, "2:00 PM")
+    hotel.transport.create_route("Beach", driver, "4:30 PM")
+    hotel.transport.create_route("Downtown Express", driver, "8:00 AM")
+    hotel.transport.create_route("Suburban Shuttle", driver, "11:00 AM")
+    hotel.transport.create_route("Nightlife Special", driver, "9:00 PM")
+    hotel.transport.create_route("Train Station", driver, "6:00 AM")
 
 
 ######################
@@ -45,7 +48,7 @@ def menu(session):
     if "user_id" in session:
         extra = "Profile"
         login = "Logout"
-    if get_user_role(session) == "staff":
+    if get_user_role(session) == "Staff":
         extra = "Staff"
 
     return Nav(
@@ -82,8 +85,14 @@ def display_room(room: Room, start_date, end_date):
             P(f"Price: ฿{room.price} / Day"),
             P(f"Status: {'Available' if room.status == 1 else 'Unavailable'}"),
             P(f"Commodity: {', '.join(room.things)}"),
-            Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary", onclick=f"document.location='/booking/{room.room_id}/{start_date.strftime("%Y-%m-%d")}/{end_date.strftime("%Y-%m-%d")}'",
-                   style="font-weight: bold;"),
+            Form(
+                Input(type="hidden", name="room-id", value=room.room_id),
+                Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary",
+                    style="font-weight: bold;"),
+                action="/booking/review",
+                method="GET"
+            ),
+
             cls="card-text",
             style="text-align: left; margin-left: 20px;"
         ),
@@ -123,8 +132,31 @@ def checkin_table(booking):
             )
 
 
+def route_card(route): 
+    is_reserved = getattr(route, '_Route__is_booked')
+    button_text = "Already reserved" if is_reserved else "Reserve"
+    button_disabled = "disabled" if is_reserved else ""
+    button_color = "grey" if is_reserved else "#2196f3"  # blue as default
+    text_color = "red" if is_reserved else "white"
+
+    return Card(
+        H3(route.name), 
+        P("Driver Name: ", route.staff.real_name), 
+        P("Departure: ", route.time),
+        Button(
+            button_text, 
+            hx_post=f"/transport/reserve/{route.name}", 
+            hx_target="#transport-confirmation", 
+            hx_swap="outerHTML",
+            disabled=button_disabled,
+            style=f"outline: none; background-color: {button_color}; color: {text_color}; cursor: {'not-allowed' if is_reserved else 'pointer'};"
+        ),
+        style="box-shadow: 0 4px 8px rgba(0,0,0,0.2); border-radius: 10px; margin: 10px; padding: 10px;"
+    )
+
+
 ######################
-#   API  Functions   #
+#   Web  Functions   #
 ######################
 def check_login(session, page=None):
     if "user_id" not in session:
@@ -134,10 +166,7 @@ def check_login(session, page=None):
 def get_user_role(session):
     if "user_id" not in session:
         return None
-    for staff in hotel.staffs:
-        if staff.user_id == session["user_id"]:
-            return "staff"
-    return "guest"
+    return hotel.get_role_by_id(session["user_id"])
 
 
 
@@ -156,7 +185,7 @@ def get(session):
             Div(
                 H1("Welcome to Cozy Hotel", style="font-size: 5em; color: white; text-shadow: 2px 2px 5px black; font-weight: 800;"),
                 P("We have the coziest rooms in the world", style="font-size: 2em; color: white; text-shadow: 2px 2px 5px black; font-weight: 800;"),
-                style="text-align: center; padding: 100px 0;"            
+                style="text-align: center; padding: 100px 0;"
             ),
             Button("Book Now", cls="btn btn-primary", onclick="document.location='/booking'")
         ),
@@ -215,7 +244,7 @@ async def get(session):
 
 
 @rt("/get-rooms")
-async def post(request):
+async def post(session, request):
     try:
         form_data = await request.form()
         start_date = datetime.strptime(form_data.get("check-in"), "%Y-%m-%d")
@@ -247,7 +276,12 @@ async def post(request):
     if room_type not in ["Single", "Double", "Family", "Suite", "All"]:
         return P("Invalid Room Type", style="color: red;")
 
-    matching_hotel = hotel.get_room(room_type, guest_size, max_price, things, start_date, end_date)
+    session["booking"] = {
+        "start_date": start_date.strftime("%Y-%m-%d"),
+        "end_date": end_date.strftime("%Y-%m-%d"),
+    }
+
+    matching_hotel = hotel.get_room_by_attribute(room_type, guest_size, max_price, things, start_date, end_date)
 
     if matching_hotel == []:
         return P("No rooms available / match your criteria 😔")   
@@ -265,15 +299,25 @@ def get():
     )
 
 
-@rt("/booking/{room_id}/{start_date}/{end_date}")
-def get(session, room_id: int, start_date: str, end_date: str):
+@rt("/booking/review")
+async def get(session, request):
+    print("login")
+    check_login(session, "booking")
 
+    if session["booking"] is None:
+        return RedirectResponse("/booking", status_code=303)
+
+    start_date = session["booking"]["start_date"]
+    end_date = session["booking"]["end_date"]
+
+    room_id = int(request.query_params.get("room-id"))
+    print(room_id)
 
     formated_start = datetime.strptime(start_date, "%Y-%m-%d")
     formated_end = datetime.strptime(end_date, "%Y-%m-%d")
 
     if room_id not in [room.room_id for room in hotel.rooms]:
-        return P("Room not found")
+        return P("Invalid Room")
     # TODO check if room is available (class not implemented yet)
     if datetime.strptime(start_date, "%Y-%m-%d") < datetime.today():
         return P("Invalid Check-in Date")
@@ -284,7 +328,7 @@ def get(session, room_id: int, start_date: str, end_date: str):
     if hotel.get_room_by_id(room_id).status == 0:
         return P("Room is not available")
 
-    return Titled("Confirmation",
+    return (Title("Review"), menu(session), Br(),
         Container(
             H1("Booking Confirmation"),
             reciept_card(hotel.get_room_by_id(room_id), formated_start, formated_end),
@@ -293,14 +337,16 @@ def get(session, room_id: int, start_date: str, end_date: str):
                     Label("Full Legal Name on Credit Card",
                         Input(type="text", name="full-name", required=True)),
                     Group(
-                        Input(placeholder="Credit Card Number", type="text", name="credit-card", required=True, aria_invalid="true"),
-                        Input(placeholder="Expiry Date (MM/YY)", type="text", name="expiration", required=True),
-                        Input(placeholder="CVV", type="text", name="cvv", required=True)
+                        Input(placeholder="Credit Card Number", type="tel", pattern="[0-9]{16}", maxlength=19, name="credit-card", required=True),
+                        Input(placeholder="Expiry Date (MM)", type="number", min=1, max=12, name="expiration-month", required=True),
+                        Input(placeholder="Expiry Date (YY)", type="number", min=0, max=99, name="expiration-year", required=True),
+                        Input(placeholder="CVV", type="tel", pattern="[0-9]{3,4}", name="cvv", maxlength=4, required=True),
                     ),
                     Label("Billing Address",
                         Input(type="text", name="address", required=True)),
+                    P(id="return-message", style="color: red;"),
                     Button("Confirm", type="submit", cls="btn btn-primary"),
-                    hx_post=f"/booking/{room_id}/{start_date}/{end_date}", hx_target="#booking-form"
+                    hx_post=f"/booking/review", hx_target="#return-message", required=True
                 ),
                 style="text-align: center;"
             ),
@@ -310,41 +356,51 @@ def get(session, room_id: int, start_date: str, end_date: str):
     )
 
 
-@rt("/booking/{room_id}/{start_date}/{end_date}")
-async def post(request):
+@rt("/booking/review")
+async def post(session, request):
     form_data = await request.form()
+    room_id = int(request.query_params.get("room-id"))
+    name = form_data.get("full-name")
     card_number = form_data.get("credit-card")
+    expiration_month = int(form_data.get("expiration-month"))
+    expiration_year = int(form_data.get("expiration-year"))
+    cvv = form_data.get("cvv")
 
-    # if len(card_number) != 16:
-    #     return P("Invalid Credit Card Number")
-    # if not card_number.isdigit():
-    #     return P("Invalid Credit Card Number")
+    if len(card_number) != 16:
+        return P("Invalid Credit Card Number", id="return-message", style="color: red;")
+    if not card_number.isdigit():
+        return P("Invalid Credit Card Number", id="return-message", style="color: red;")
+    if expiration_month not in range(1, 13):
+        return P("Invalid Expiry Month", id="return-message", style="color: red;")
+    if expiration_year not in range(0, 100):
+        return P("Invalid Expiry Year", id="return-message", style="color: red;")
+    if datetime.strptime(f"{str(expiration_month)}/{str(expiration_year)}", "%m/%y") < datetime.today():
+        return P("Credit Card Expired", id="return-message", style="color: red;")
+    if len(cvv) not in [3, 4]:
+        return P("Invalid CVV", id="return-message", style="color: red;")
     
-    start_date = datetime.strptime(request.path_params["start_date"], "%Y-%m-%d")
-    end_date = datetime.strptime(request.path_params["end_date"], "%Y-%m-%d")
+    start_date = datetime.strptime(session["booking"]["start_date"], "%Y-%m-%d")
+    end_date = datetime.strptime(session["booking"]["end_date"], "%Y-%m-%d")
 
-    hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(101), start_date, end_date)
+    hotel.create_booking(hotel.get_guest_by_id(1), hotel.get_room_by_id(room_id), start_date, end_date)
 
-    #Create booking instance
-    return Container(
-        H1("Booking Successful"),
-        P("Thank you for booking with us"),
-        style="text-align: center;"
-    )
+    return Redirect("/success")
 
 @rt("/success")
-def get():
-    return Container(
+def get(session):
+    session["booking"] = None
+    return (Title("Success"), menu(session), Br(),
+        Container(
         H1("Booking Successful"),
         P("Thank you for booking with us"),
         style="text-align: center;"
-    )
+    ))
 
 @rt("/profile")
 def get(session):
-    check_login(session, "profile")
+    check_login("profile")
 
-    if get_user_role(session) == "staff":
+    if get_user_role(session) == "Staff":
         return P("You're staff")
     
     user = hotel.get_guest_by_id(session["user_id"])
@@ -468,7 +524,14 @@ def get(session, request):
                     Label("Email",
                         Input(type="email", name="email", required=True)),
                     Label("Password",
-                        Input(type="password", name="password", required=True)),
+                        Input(id="password", type="password", name="password", required=True)),
+                    Label(Input(id="togglePassword", type="checkbox")," Show Password"),
+                    Script("""
+                            document.getElementById('togglePassword').addEventListener('change', function () {
+                            var passwordField = document.getElementById('password');
+                            passwordField.type = this.checked ? 'text' : 'password';
+                        });
+                    """),
                     P(id="return-message", style="color: red;"),
                     Button("Login", type="submit", cls="btn btn-primary", style="width: 150px;"),
                     hx_post="/login", hx_target="#return-message"
@@ -620,9 +683,128 @@ def get(session):
 #     if (room_id in [room.room_id for room in hotel.rooms]):
 #         return P("Room ID, try another ID")
     
-#     hotel.add_room(Room(room_id, room_type, size, price, status, things.split(","), image))
+#     hotel.create_room(Room(room_id, room_type, size, price, status, things.split(","), image))
 
 #     return P("Room Added")
 
+
+@rt('/service')
+def get(session):
+    check_login(session, "service")
+
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
+
+    return Title("Service"), menu(session), Br(), Container(
+        Button("▲", id="toggle-btn",
+               onclick="""
+                   var content = document.getElementById('collapsible-container');
+                   if (content.style.maxHeight && content.style.maxHeight !== '0px'){
+                       content.style.maxHeight = '0px';
+                       this.innerHTML = '▼';
+                   } else {
+                       content.style.maxHeight = '700px';
+                       this.innerHTML = '▲';
+                   }
+               """,
+              style="background: none; border: none; font-size: 12px; cursor: pointer; margin-bottom: 5px; color: #000;"
+        ),
+        Card(
+            H1("Choose Service", style="text-align: center; color: #2196f3; margin: 20px 0; font-weight: 800;"),
+            Grid(
+                Card(
+                    H3("Transportation"),
+                    Button("Choose", hx_get="/transport", hx_target="#main-content", hx_swap="innerHTML"),
+                    style="none; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                ),
+                Card(
+                    H3("Laundry Service"),
+                    Button("Choose", hx_get="/laundry", hx_target="#main-content", hx_swap="innerHTML"),
+                    style="none; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                ),
+                Card(
+                    H3("Order Foods"),
+                    Button("Choose", hx_get="/foods", hx_target="#main-content", hx_swap="innerHTML"),
+                    style="none; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                ),
+                Card(
+                    H3("Cleaning Service"),
+                    Button("Choose", hx_get="/cleaning", hx_target="#main-content", hx_swap="innerHTML"),
+                    style="none; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                ),
+                Card(
+                    H3("Repair Service"),
+                    Button("Choose", hx_get="/repair", hx_target="#main-content", hx_swap="innerHTML"),
+                    style="none; border-radius: 10px; padding: 20px; margin: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);"
+                )
+            ),
+            id="collapsible-container",
+            style="max-height: 700px; overflow: hidden; transition: max-height 0.5s ease-out; border: 1px solid #ccc; border-radius: 5px; padding: 10px; margin-bottom: 20px;"
+        ),
+        Div(id="main-content"),
+        Div(
+            P("Order placed successfully!"),
+            Button("Close", onclick="document.getElementById('orderModal').style.display='none';"),
+            id="orderModal",
+            style="""
+                display: none;
+                position: fixed;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: #fff;
+                padding: 30px;
+                border: 2px solid #2196f3;
+                border-radius: 8px;
+                box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+                z-index: 1000;
+                text-align: center;
+                font-size: 18px;
+                color: #333;
+            """
+        )
+    )
+
+@rt('/transport')
+def get():
+    return Titled("Available Routes",
+        Div(
+            Input(
+                type="text",
+                name="q",
+                placeholder="Search routes...",
+                hx_get="/transport/search",
+                hx_trigger="keyup changed delay:200ms",
+                hx_target="#route-list",
+                style="width: 100%; padding: 8px; margin-bottom: 10px;"
+            ),
+            Div(*[route_card(route) for route in hotel.transport.routes_list], id="route-list"),
+            Div(id="transport-confirmation")
+        )
+    )
+
+@rt('/transport/search')
+def search(q: str = ""):
+    filtered_routes = [route for route in hotel.transport.routes_list if q.lower() in route.name.lower()]
+    return Div(*[route_card(route) for route in filtered_routes], id="route-list")
+
+@rt('/transport/reserve/{route_name}')
+def post(route_name: str, session):
+    guest_instance = hotel.get_guest_by_id(session["user_id"])
+    order = hotel.transport.confirm_reservation(guest_instance, route_name)
+
+    if order in ["Already booked", "Route not found"]:
+        return Div(P(order), hx_swap_oob="outerHTML", id="transport-confirmation")
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/transport', {target: '#main-content'});
+        """),
+        H3("Reservation Confirmed"),
+        P(f"Your transportation reservation for {route_name} has been confirmed for guest: {guest_instance.username}."),
+        hx_swap_oob="outerHTML",
+        id="transport-confirmation"
+    )
 
 serve()
