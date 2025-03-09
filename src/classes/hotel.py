@@ -1,6 +1,5 @@
 from fasthtml.common import *
 from datetime import datetime, timedelta, date
-import uuid
 
 class Hotel:
     def __init__(self, Room=None, Booking=None, Guest=None, Staff=None, Floor=None, Things=None):
@@ -76,6 +75,43 @@ class Hotel:
             # Guest Name filter
             guest_match = (guest_name is None or booking.guest.real_name == guest_name)
             
+            # Date Range filter (allows None values separately)
+            date_match = (
+                (check_in_date is None or check_out_date is None) or  # If either is None, allow any date
+                (booking.start_date <= check_out_date and booking.end_date >= check_in_date)  # Correct overlap check
+            )
+
+            # If all filters match, add to results
+            if room_match and guest_match and date_match:
+                valid_booking.append(booking)
+
+        return valid_booking
+    
+
+    def check_out_guest(self, booking_id):
+        booking = self.get_booking_by_id(booking_id)
+        if booking is None:
+            return "Booking not found"
+        if booking.status == "Checked Out":
+            return "Guest already checked out"
+        if booking.status == "Cancelled":
+            return "Booking cancelled"
+        booking.status = "Checked Out"
+        return "Success"
+    
+    def filter_check_out(self, room_id=None, guest_name=None, check_in_date=None, check_out_date=None):
+        valid_booking = []
+        
+        for booking in self.bookings:
+            if booking.status == "Checked Out" or booking.status == "Cancelled" or booking.status == "Pending":
+                continue
+
+            # Room ID filter
+            room_match = (room_id is None or booking.room.room_id == room_id)
+
+            # Guest Name filter
+            guest_match = (guest_name is None or booking.guest.real_name == guest_name)
+
             # Date Range filter (allows None values separately)
             date_match = (
                 (check_in_date is None or check_out_date is None) or  # If either is None, allow any date
@@ -179,6 +215,15 @@ class Hotel:
                 return staff
         return None
     
+    def get_service_fee(self, booking):
+        total_fee = 0
+        for service in booking.service_reservations:
+            total_fee += service.total
+        return total_fee
+    
+    def get_services_of_booking(self, booking, service_name):
+        return [service for service in booking.service_reservations if service.name == service_name]
+    
     
 
 class User:
@@ -237,6 +282,18 @@ class Guest(User):
 class Staff(User):
     def __init__(self, username, real_name, password, email):
         super().__init__(username, real_name, password, email)
+        self.__status = "Available"
+        self.__schedule = []
+
+    @property
+    def status(self):
+        return self.__status
+    
+    def get_schedule(self):
+        return self.__schedule
+    
+    def add_schedule(self, work_type, time):
+        self.__schedule.append([work_type, time])
 
 
 class Floor:
@@ -296,6 +353,7 @@ class Booking():
         self.__start_date = start_date
         self.__end_date = end_date
         self.__status = status
+        self.__service_reservations = []
         Booking.current_booking_id += 1
 
     @property
@@ -325,6 +383,10 @@ class Booking():
     @status.setter
     def status(self, status):
         self.__status = status
+
+    @property
+    def service_reservations(self):
+        return self.__service_reservations
     
 
 # ----- Service Related Classes ----- #
@@ -341,12 +403,35 @@ class Service:
     def reservations(self, reservations):
         self.__reservations = reservations
 
+    def get_reserved_reservation(self):
+        return [reservation for reservation in self.reservations if reservation.status != "Complete"]
+    
+    def complete_reservation(self, reservation_id):
+        for reservation in self.reservations:
+            if reservation.id == reservation_id:
+                reservation.status = "Complete"
+                return "Success"
+        return "Reservation not found"
+
 
 class ServiceReservation:
-    def __init__(self, guest):
+    __id_counter = 1
+    def __init__(self, name, guest):
+        self.__name = name
+        self.__id = ServiceReservation.__id_counter
         self.__guest = guest
         self.__status = "Pending"
         self.__timestamp = datetime.now()
+        self.__total = 0
+        ServiceReservation.__id_counter += 1
+
+    @property
+    def name(self):
+        return self.__name
+
+    @property
+    def id(self):
+        return self.__id
 
     @property
     def guest(self):
@@ -356,12 +441,20 @@ class ServiceReservation:
     def status(self):
         return self.__status
     
+    @property
+    def total(self):
+        return self.__total
+    
     @status.setter
     def status(self, status):
         if status in ["Pending", "Complete", "Cancelled"]:
             self.__status = status
         else:
             raise ValueError("Invalid status")
+        
+    @property
+    def timestamp(self):
+        return self.__timestamp
 
 
 # Transport Service #
@@ -374,66 +467,53 @@ class Transport(Service):
     def routes(self):
         return self.__routes
 
-    def create_route(self, location, staff, time):
-        self.__routes.append(Route(location, staff, time))
+    def create_route(self, location, price):
+        self.__routes.append(Route(location, price))
 
-    def find_available_routes(self, search: str):
-        return [p for p in self.__routes if search.lower() in p.name.lower()]
-    
-    def get_available_routes(self):
-        return [p for p in self.__routes if not p.is_reserved]
-    
-    def create_reservation(self, guest, route_name):
+    def create_reservation(self, guest, route_name, date, booking):
         for route in self.__routes:
             if route.name == route_name:
-                if route.is_reserved:
-                    return "Already booked"
-                route.is_reserved = True
-                order = TransportReservation(guest, route)
-                self.__reservations.append(order)
+                order = TransportReservation(guest, route, date)
+                self.reservations.append(order)
+                booking.service_reservations.append(order)
                 print(order)
                 return order
         return "Route not found"
     
 
 class TransportReservation(ServiceReservation):
-    def __init__(self, guest, route):
-        super().__init__(guest)
+    def __init__(self, guest, route, assigned_time):
+        super().__init__("Transport", guest)
         self.__route = route
+        self.__total = route.price
+        self.__assigned_time = assigned_time
+
+    @property
+    def route(self):
+        return self.__route
+    
+    @property
+    def assigned_time(self):
+        return self.__assigned_time
 
 class Route:
-    def __init__(self, name, staff, time):
+    def __init__(self, name, price):
         self.__name = name
-        self.__staff = staff
-        self.__time = time
-        self.__is_reserved = False
+        self.__price = price
 
     @property
     def name(self):
         return self.__name
     
     @property
-    def staff(self):
-        return self.__staff
+    def price(self):
+        return self.__price
     
-    @property
-    def time(self):
-        return self.__time
-    
-    @property
-    def is_reserved(self):
-        return self.__is_reserved
-    
-    @is_reserved.setter
-    def is_reserved(self, status):
-        self.__is_reserved = status
-
 # Laundry Service #
 class Laundry(Service):
     def __init__(self):
         super().__init__("Laundry")
         self.__cloths = []
-        self.__orders = []  # Stores LaundryOrder objects
 
     @property
     def cloths(self):
@@ -448,19 +528,28 @@ class Laundry(Service):
                 return cloth
         return None
 
-    def confirm_order(self, guest, cart):
+    def create_reservation(self, guest, cart, booking):
         order = LaundryReservation(guest, cart.items.copy(), cart.total())
-        self.__orders.append(order)
+        self.reservations.append(order)
+        booking.service_reservations.append(order)
         print("Laundry order confirmed:", order)  # Debug print to console only
         return order
     
 
 class LaundryReservation(ServiceReservation):
     def __init__(self, guest, items, total):
-        super().__init__(guest)
+        super().__init__("Laundry", guest)
         # Use the same generic key "product" so that for cloth items, it shows the cloth name
         self.__items = [{"name": item["product"].name, "amount": item["quantity"]} for item in items.values()]
         self.__total = total
+
+    @property
+    def items(self):
+        return self.__items
+    
+    @property
+    def total(self):
+        return self.__total
 
 
 class Cloth:
@@ -504,9 +593,10 @@ class FoodOrdering(Service):
     def add_new_menu(self, name, price, image_url):
         self.__dishes.append(Dish(name, price, image_url))
 
-    def create_food_order(self, guest, cart):
+    def create_food_order(self, guest, cart, booking):
         order = FoodReservation(guest, cart.items.copy(), cart.total())
         self.reservations.append(order)
+        booking.service_reservations.append(order)
         
         for item in cart.items.values():
             dish = item['product']
@@ -520,9 +610,13 @@ class FoodOrdering(Service):
 
 class FoodReservation(ServiceReservation):
     def __init__(self, guest, items, total):
-        super().__init__(guest)
+        super().__init__("Food Ordering", guest)
         self.__items = [{"name": item["product"].name, "amount": item["quantity"]} for item in items.values()]
         self.__total = total
+
+    @property
+    def items(self):
+        return self.__items
 
 
 class Dish:
@@ -587,16 +681,17 @@ class CleaningService(Service):
     def __init__(self):
         super().__init__("Cleaning Service")
 
-    def confirm_order(self, guest, appointment_date, appointment_time):
+    def create_reservation(self, guest, appointment_date, appointment_time, booking):
         order = CleaningReservation(guest, appointment_date, appointment_time)
         self.reservations.append(order)
+        booking.service_reservations.append(order)
         print("Cleaning appointment confirmed:", order)  # Debug print to console only
         return order
     
 
 class CleaningReservation(ServiceReservation):
     def __init__(self, guest, appointment_date, appointment_time):
-        super().__init__(guest)
+        super().__init__("Cleaning Service", guest)
         self.__appointment_date = appointment_date
         self.__appointment_time = appointment_time
 
@@ -613,15 +708,16 @@ class RepairService(Service):
     def __init__(self):
         super().__init__("Repair Service")
 
-    def create_reservation(self, guest, appointment_date, appointment_time, repair_issue):
+    def create_reservation(self, guest, appointment_date, appointment_time, repair_issue, booking):
         order = RepairReservation(guest, appointment_date, appointment_time, repair_issue)
+        booking.service_reservations.append(order)
         self.reservations.append(order)
         return order
     
 
 class RepairReservation(ServiceReservation):
     def __init__(self, guest, appointment_date, appointment_time, repair_issue):
-        super().__init__(guest)
+        super().__init__("Repair Service", guest)
         self.__appointment_date = appointment_date
         self.__appointment_time = appointment_time
         self.__repair_issue = repair_issue
