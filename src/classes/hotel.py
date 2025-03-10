@@ -8,6 +8,7 @@ class Hotel:
         self.__bookings = []
         self.__guests = []
         self.__staffs = []
+        self.__items = []
         self.__transport = Transport()
         self.__laundry = Laundry()
         self.__food_ordering = FoodOrdering()
@@ -29,6 +30,10 @@ class Hotel:
     @property
     def staffs(self):
         return self.__staffs
+    
+    @property
+    def items(self):
+        return self.__items
     
     @property
     def transport(self):
@@ -155,13 +160,13 @@ class Hotel:
                 return staff
         return None
 
-    def get_room_by_attribute(self, room_type=None, guest_count=None, max_budget_per_day=None, commodities=None, start_date=None, end_date=None):
+    def get_room_by_attribute(self, room_type=None, guest_count=None, max_budget_per_day=None, items=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
             if (room.status == 1) and \
                 (room.type == room_type or room_type == "All") and \
                 (room.size >= guest_count) and (room.price <= max_budget_per_day) and \
-                ((all(commodity in room.commodities for commodity in commodities) or commodities == [None])) and \
+                ((all(item in room.items for item in items) or items == [None])) and \
                 (self.check_room_availability(room.room_id, start_date, end_date)):
                 returned_room.append(room)
         return returned_room
@@ -223,6 +228,16 @@ class Hotel:
     
     def get_services_of_booking(self, booking, service_name):
         return [service for service in booking.service_reservations if service.name == service_name]
+    
+    def create_item(self, name, category, price, has_repair_fee):
+        self.__items.append(Item(name, category, price, has_repair_fee))
+        return "Success"
+    
+    def get_item_by_name(self, name):
+        for item in self.__items:
+            if item.name == name:
+                return item
+        return None
     
 
 class User:
@@ -313,13 +328,13 @@ class Floor:
         self.__rooms = []
 
 class Room:
-    def __init__(self, room_id, type, size, price, status: bool, commodities, image):
+    def __init__(self, room_id, type, size, price, status: bool, items, image):
         self.__room_id = room_id
         self.__type = type
         self.__size = size
         self.__price = price
         self.__status = status
-        self.__commodities = commodities
+        self.__items = items
         self.__image = image
     
     @property
@@ -343,31 +358,36 @@ class Room:
         return self.__status
     
     @property
-    def commodities(self):
-        return self.__commodities
+    def items(self):
+        return self.__items
     
     @property
     def image(self):
         return self.__image
     
 
-class Commodity:
-    def __init__(self, name, price, has_repair_fee):
+class Item:
+    def __init__(self, name, category, price, has_repair_fee):
         self.__name = name
+        self.__category = category
         self.__price = price
-        self.__has_repair_fee = has_repair_fee
+        self.__status = "Fine"
 
     @property
     def name(self):
         return self.__name
     
     @property
+    def category(self):
+        return self.__category
+    
+    @property
     def price(self):
         return self.__price
     
     @property
-    def has_repair_fee(self):
-        return self.__has_repair_fee
+    def status(self):
+        return self.__status
     
 
 class Booking():
@@ -438,6 +458,14 @@ class Service:
                 reservation.status = "Ongoing"
                 reservation.staff = staff
                 staff.assign_service(reservation)
+                return "Success"
+        return "Reservation not found"
+    
+    def unassign_reservation(self, reservation_id, staff):
+        for reservation in self.reservations:
+            if reservation.id == reservation_id and reservation.staff == staff:
+                reservation.status = "Pending"
+                staff.complete_service()
                 return "Success"
         return "Reservation not found"
 
@@ -777,20 +805,22 @@ class RepairService(Service):
     def __init__(self):
         super().__init__("Repair Service")
 
-    def create_reservation(self, guest, appointment_date, appointment_time, repair_issue, booking):
-        order = RepairReservation(guest, appointment_date, appointment_time, repair_issue, booking.room.room_id)
+    def create_reservation(self, guest, appointment_date, appointment_time, item, repair_issue, booking):
+        order = RepairReservation(guest, appointment_date, appointment_time, item, repair_issue, booking.room.room_id)
         booking.service_reservations.append(order)
         self.reservations.append(order)
         return order
     
 
 class RepairReservation(ServiceReservation):
-    def __init__(self, guest, appointment_date, appointment_time, repair_issue, room_id):
+    def __init__(self, guest, appointment_date, appointment_time, item, repair_issue, room_id):
         super().__init__("Repair Service", guest)
         self.__appointment_date = appointment_date
         self.__appointment_time = appointment_time
+        self.__item = item
         self.__repair_issue = repair_issue
         self.__room_id = room_id
+        self.__total = item.price
 
     @property
     def appointment_date(self):
@@ -801,9 +831,17 @@ class RepairReservation(ServiceReservation):
         return self.__appointment_time
     
     @property
+    def item(self):
+        return self.__item
+
+    @property
     def repair_issue(self):
         return self.__repair_issue
     
     @property
     def room_id(self):
         return self.__room_id
+    
+    @property
+    def total(self):
+        return self.__total

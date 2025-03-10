@@ -47,6 +47,7 @@ setup_project.bat
 
 Run the project:
 ```sh
+cd /src
 python main.py
 ```
 
