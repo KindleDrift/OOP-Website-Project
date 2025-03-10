@@ -10,10 +10,10 @@ This project is a hotel website developed as part of our Object-Oriented Program
 
 All members contributed equally to the development:
 
-Phudith Janjaeng
-Siwakorn Titragool
-Bannasorn Lalod
-Korn Klinthong
+- Phudith Janjaeng
+- Siwakorn Titragool
+- Bannasorn Lalod
+- Korn Klinthong
 
 ## 3. Features
 - Room booking system
@@ -23,8 +23,8 @@ Korn Klinthong
 
 
 ## 4. Technologies Used
-Programming Language: Python
-Framework: FastHTML
+- Programming Language: Python
+- Framework: FastHTML
 
 
 ## 5. Setup & Installation
