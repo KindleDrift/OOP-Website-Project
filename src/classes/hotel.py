@@ -2,7 +2,8 @@ from fasthtml.common import *
 from datetime import datetime, timedelta, date
 
 class Hotel:
-    def __init__(self):
+    def __init__(self, name):
+        self.__name = name
         self.__floors = []
         self.__rooms = []
         self.__bookings = []
@@ -220,10 +221,17 @@ class Hotel:
                 return staff
         return None
     
-    def get_service_fee(self, booking):
+    def get_total_service_fee(self, booking):
         total_fee = 0
         for service in booking.service_reservations:
             total_fee += service.total
+        return total_fee
+
+    def get_current_service_fee(self, booking):
+        total_fee = 0
+        for service in booking.service_reservations:
+            if service.status == "Complete" and service.paid == False:
+                total_fee += service.total
         return total_fee
     
     def get_services_of_booking(self, booking, service_name):
@@ -434,6 +442,19 @@ class Booking():
     def service_reservations(self):
         return self.__service_reservations
     
+    def pay_service_fee(self):
+        for service in self.__service_reservations:
+            if service.status == "Complete" and service.paid == False:
+                service.paid = True
+        return "Success"
+    
+    def get_unpaid_service_fee(self):
+        total_fee = 0
+        for service in self.__service_reservations:
+            if service.status == "Complete" and service.paid == False:
+                total_fee += service.total
+        return total_fee
+    
 
 # ----- Service Related Classes ----- #
 class Service:
@@ -494,6 +515,7 @@ class ServiceReservation:
         self.__guest = guest
         self.__staff = None
         self.__status = "Pending"
+        self.__paid = False
         self.__timestamp = datetime.now()
         self.__total = 0
         ServiceReservation.__id_counter += 1
@@ -532,6 +554,14 @@ class ServiceReservation:
             self.__status = status
         else:
             raise ValueError("Invalid status")
+        
+    @property
+    def paid(self):
+        return self.__paid
+    
+    @paid.setter
+    def paid(self, paid):
+        self.__paid = paid
         
     @property
     def timestamp(self):
