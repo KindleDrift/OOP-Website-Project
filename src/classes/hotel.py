@@ -2,7 +2,7 @@ from fasthtml.common import *
 from datetime import datetime, timedelta, date
 
 class Hotel:
-    def __init__(self, Room=None, Booking=None, Guest=None, Staff=None, Floor=None, Things=None):
+    def __init__(self):
         self.__floors = []
         self.__rooms = []
         self.__bookings = []
@@ -155,13 +155,13 @@ class Hotel:
                 return staff
         return None
 
-    def get_room_by_attribute(self, room_type=None, guest_count=None, max_budget_per_day=None, things=None, start_date=None, end_date=None):
+    def get_room_by_attribute(self, room_type=None, guest_count=None, max_budget_per_day=None, commodities=None, start_date=None, end_date=None):
         returned_room = []
         for room in self.rooms:
             if (room.status == 1) and \
                 (room.type == room_type or room_type == "All") and \
                 (room.size >= guest_count) and (room.price <= max_budget_per_day) and \
-                ((all(thing in room.things for thing in things) or things == [None])) and \
+                ((all(commodity in room.commodities for commodity in commodities) or commodities == [None])) and \
                 (self.check_room_availability(room.room_id, start_date, end_date)):
                 returned_room.append(room)
         return returned_room
@@ -312,18 +312,14 @@ class Floor:
         self.__floor_id = floor_number
         self.__rooms = []
 
-class Things:
-    pass
-
-
 class Room:
-    def __init__(self, room_id, type, size, price, status: bool, things: Things, image):
+    def __init__(self, room_id, type, size, price, status: bool, commodities, image):
         self.__room_id = room_id
         self.__type = type
         self.__size = size
         self.__price = price
         self.__status = status
-        self.__things = things
+        self.__commodities = commodities
         self.__image = image
     
     @property
@@ -347,12 +343,31 @@ class Room:
         return self.__status
     
     @property
-    def things(self):
-        return self.__things
+    def commodities(self):
+        return self.__commodities
     
     @property
     def image(self):
         return self.__image
+    
+
+class Commodity:
+    def __init__(self, name, price, has_repair_fee):
+        self.__name = name
+        self.__price = price
+        self.__has_repair_fee = has_repair_fee
+
+    @property
+    def name(self):
+        return self.__name
+    
+    @property
+    def price(self):
+        return self.__price
+    
+    @property
+    def has_repair_fee(self):
+        return self.__has_repair_fee
     
 
 class Booking():
@@ -415,11 +430,11 @@ class Service:
         self.__reservations = reservations
 
     def get_reserved_reservation(self):
-        return [reservation for reservation in self.reservations if reservation.status != "Complete"]
+        return [reservation for reservation in self.reservations if (reservation.status == "Pending" or reservation.status == "Ongoing")]
     
     def assign_reservation(self, reservation_id, staff):
         for reservation in self.reservations:
-            if reservation_id == reservation_id:
+            if reservation.id == reservation_id and staff.status == "Available":
                 reservation.status = "Ongoing"
                 reservation.staff = staff
                 staff.assign_service(reservation)
@@ -428,8 +443,16 @@ class Service:
 
     def complete_reservation(self, reservation_id, staff):
         for reservation in self.reservations:
-            if reservation.id == reservation_id:
+            if reservation.id == reservation_id and reservation.staff == staff:
                 reservation.status = "Complete"
+                staff.complete_service()
+                return "Success"
+        return "Reservation not found"
+    
+    def cancel_reservation(self, reservation_id, staff):
+        for reservation in self.reservations:
+            if reservation.id == reservation_id and reservation.staff == staff:
+                reservation.status = "Cancelled"
                 staff.complete_service()
                 return "Success"
         return "Reservation not found"
@@ -523,6 +546,10 @@ class TransportReservation(ServiceReservation):
         return self.__route
     
     @property
+    def total(self):
+        return self.__total
+    
+    @property
     def assigned_time(self):
         return self.__assigned_time
 
@@ -543,17 +570,17 @@ class Route:
 class Laundry(Service):
     def __init__(self):
         super().__init__("Laundry")
-        self.__cloths = []
+        self.__clothes = []
 
     @property
-    def cloths(self):
-        return self.__cloths
+    def clothes(self):
+        return self.__clothes
 
     def create_cloth(self, type, price):    
-        self.__cloths.append(Cloth(type, price))
+        self.__clothes.append(Cloth(type, price))
 
     def get_cloth_type(self, type_name):
-        for cloth in self.__cloths:
+        for cloth in self.__clothes:
             if cloth.name == type_name:
                 return cloth
         return None
@@ -562,6 +589,7 @@ class Laundry(Service):
         order = LaundryReservation(guest, cart.items.copy(), cart.total())
         self.reservations.append(order)
         booking.service_reservations.append(order)
+        guest.laundry_cart.clear()
         print("Laundry order confirmed:", order)  # Debug print to console only
         return order
     
@@ -635,6 +663,8 @@ class FoodOrdering(Service):
             if found_dish:
                 found_dish.amount -= quantity
 
+        guest.food_cart.clear()
+
         print("Food order confirmed:", order)
         return order
 
@@ -647,6 +677,10 @@ class FoodReservation(ServiceReservation):
     @property
     def items(self):
         return self.__items
+    
+    @property
+    def total(self):
+        return self.__total
 
 
 class Dish:

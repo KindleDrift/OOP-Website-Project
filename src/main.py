@@ -24,16 +24,6 @@ def create_instance():
     hotel.create_guest("JohnDoe", "John Doe", "john.d@domain.xyz", "password")
     hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@domain.xyz", "password")
 
-    # Check-in 3 Days Ago and Check-out in three days
-    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(105), datetime.today().date() - timedelta(days=3), datetime.today().date() + timedelta(days=3))
-    hotel.check_in_guest(1)
-    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(101), datetime.today().date(), datetime.today().date() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(102), datetime.today().date(), datetime.today().date() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(103), datetime.today().date(), datetime.today().date() + timedelta(days=1))
-    hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(104), datetime.today().date(), datetime.today().date() + timedelta(days=1))
-
-
-    driver = hotel.get_staff_by_id(2)
     hotel.transport.create_route("Airport", 100)
     hotel.transport.create_route("City Tour", 200)
     hotel.transport.create_route("Beach", 150)
@@ -76,6 +66,29 @@ def create_instance():
     hotel.laundry.create_cloth("Tie", 6.50)
     hotel.laundry.create_cloth("Socks", 8.00)
     hotel.laundry.create_cloth("Bathrobe", 22.00)
+
+    # Check-in 3 Days Ago and Check-out in three days
+    hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(105), datetime.today().date() - timedelta(days=3), datetime.today().date() + timedelta(days=3))
+    hotel.check_in_guest(1)
+
+    hotel.transport.create_reservation(hotel.get_guest_by_id(4), hotel.transport.routes[0].name, (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'), hotel.get_booking_by_id(1))
+    
+    hotel.get_guest_by_id(4).food_cart.add(hotel.food_ordering.dishes[0])
+    hotel.get_guest_by_id(4).food_cart.add(hotel.food_ordering.dishes[0])
+    hotel.get_guest_by_id(4).food_cart.add(hotel.food_ordering.dishes[1])
+    hotel.get_guest_by_id(4).food_cart.add(hotel.food_ordering.dishes[2])
+
+    hotel.food_ordering.create_food_order(hotel.get_guest_by_id(4), hotel.get_guest_by_id(4).food_cart, hotel.get_booking_by_id(1))
+
+    hotel.get_guest_by_id(4).laundry_cart.add(hotel.laundry.clothes[0])
+    hotel.get_guest_by_id(4).laundry_cart.add(hotel.laundry.clothes[1])
+    hotel.get_guest_by_id(4).laundry_cart.add(hotel.laundry.clothes[1])
+    hotel.get_guest_by_id(4).laundry_cart.add(hotel.laundry.clothes[2])
+    hotel.laundry.create_reservation(hotel.get_guest_by_id(4), hotel.get_guest_by_id(4).laundry_cart, hotel.get_booking_by_id(1))
+
+    hotel.cleaning.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), hotel.get_booking_by_id(1))
+
+    hotel.repair_service.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), "Broken Lightbulb", hotel.get_booking_by_id(1))
 
 
 ######################
@@ -124,7 +137,7 @@ def display_room(room: Room, start_date, end_date):
             P(f"Maximum People: {"👤" * room.size}"),
             P(f"Price: ฿{room.price} / Day"),
             P(f"Status: {'Available' if room.status == 1 else 'Unavailable'}"),
-            P(f"Commodity: {', '.join(room.things)}"),
+            P(f"Commodity: {', '.join(room.commodities)}"),
             Form(
                 Input(type="hidden", name="room-id", value=room.room_id),
                 Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary",
@@ -150,7 +163,7 @@ def reciept_card(room: Room, start_date, end_date):
             P(f"Maximum People: {"👤" * room.size}"),
             P(f"Price: ฿{room.price} / Day"),
             P(f"Status: {"Available" if room.status == 1 else "Unavailable"}"),
-            P(f"Commodity: {', '.join(room.things)}"),
+            P(f"Commodity: {', '.join(room.commodities)}"),
             P(f"Check-in Date: {start_date.strftime('%Y-%m-%d')}"),
             P(f"Check-out Date: {end_date.strftime('%Y-%m-%d')}"),
             P(f"Total Price: ฿{(end_date - start_date).days * room.price}"),
@@ -337,9 +350,9 @@ async def get(session):
                     )
                 ),
                 Label("Commodities: ",
-                    Input(type="checkbox", name="things-TV", value="TV",),"Television",
-                    Input(type="checkbox", name="things-AC", value="AC"),"Air-Conditioning",
-                    Input(type="checkbox", name="things-Wifi", value="Wifi"),"Wi-Fi"
+                    Input(type="checkbox", name="commodities-TV", value="TV",),"Television",
+                    Input(type="checkbox", name="commodities-AC", value="AC"),"Air-Conditioning",
+                    Input(type="checkbox", name="commodities-Wifi", value="Wifi"),"Wi-Fi"
                 ),
                 hx_post="/get-rooms", hx_target="#room-list"
             ),
@@ -362,16 +375,16 @@ async def post(session, request):
         room_type = form_data.get("room-type")
         guest_size = int(form_data.get("guests"))
         max_price = int(form_data.get("max-price"))
-        tv = form_data.get("things-TV")
-        ac = form_data.get("things-AC")
-        wifi = form_data.get("things-Wifi")
-        things = []
+        tv = form_data.get("commodities-TV")
+        ac = form_data.get("commodities-AC")
+        wifi = form_data.get("commodities-Wifi")
+        commodities = []
         if tv:
-            things.append(tv)
+            commodities.append(tv)
         if ac:
-            things.append(ac)
+            commodities.append(ac)
         if wifi:
-            things.append(wifi)
+            commodities.append(wifi)
 
         print("Received form data:", form_data)
     except:
@@ -391,7 +404,7 @@ async def post(session, request):
         "end_date": end_date.strftime("%Y-%m-%d"),
     }
 
-    matching_hotel = hotel.get_room_by_attribute(room_type, guest_size, max_price, things, start_date, end_date)
+    matching_hotel = hotel.get_room_by_attribute(room_type, guest_size, max_price, commodities, start_date, end_date)
 
     if matching_hotel == []:
         return P("No rooms available / match your criteria 😔")   
@@ -568,6 +581,8 @@ def get(session):
 def get(booking_id: int, session):
     check_login(session, "profile")
 
+    # TODO check if booking belongs to user
+
     booking = hotel.get_booking_by_id(booking_id)
     print(booking)
     if booking is None:
@@ -586,7 +601,7 @@ def get(booking_id: int, session):
                     P(f"Maximum People: {"👤" * booking.room.size}"),
                     P(f"Price: ฿{booking.room.price} / Day"),
                     P(f"Status: {"Available" if booking.room.status == 1 else "Unavailable"}"),
-                    P(f"Commodity: {', '.join(booking.room.things)}"),
+                    P(f"Commodity: {', '.join(booking.room.commodities)}"),
                     cls="card-text",
                     style="text-align: left; margin-left: 20px;"
                 ),
@@ -617,7 +632,7 @@ def get(booking_id: int, session):
                     Tbody(
                         *(Tr(
                             Td(transport.route.name),
-                            Td(transport.route.price),
+                            Td(f"฿{transport.route.price}"),
                             Td(transport.assigned_time),
                             Td(transport.status),
                         ) for transport in hotel.get_services_of_booking(booking, "Transport"))
@@ -625,28 +640,93 @@ def get(booking_id: int, session):
                     Tfoot(
                         Tr(
                             Td("Total"),
-                            Td(sum(transport.route.price if transport.status != "Cancelled" else 0 for transport in hotel.get_services_of_booking(booking, "Transport"))),
+                            Td(f"฿{sum(transport.route.price if transport.status != "Cancelled" else 0 for transport in hotel.get_services_of_booking(booking, "Transport"))}"),
                             Td(),
                             Td()
                         )
                     ),
                     cls="striped"
                 ),
-                # H2("Food Order History"),
-                # Table(
-                #     Thead(
-                #         Tr(
-                #             Th("Dish"),
-                #             Th("Price"),
-                #             Th("Quantity")
-                #         )
-                #     ),
-                #     Tbody(
-                #         *(Tr(
-                #             *(Td(dish for dish in order.dishes), Td(order.price), Td(order.quantity))
-                #         ) for order in hotel.get_services_of_booking(booking, "Food Ordering"))
-                #     ),
-                # ),
+                H2("Food Order History"),
+                Table(
+                    Thead(
+                        Tr(
+                            Th("Food"),
+                            Th("Price"),
+                            Th("Status")
+                        )
+                    ),
+                    Tbody(
+                        *(Tr(
+                            Td(", ".join([f"{item['name']} x{item['amount']}" for item in order.items])),
+                            Td(f"฿{order.total}"),
+                            Td(order.status),
+                        ) for order in hotel.get_services_of_booking(booking, "Food Ordering"))
+                    ),
+                    Tfoot(
+                        Tr(
+                            Td("Total"),
+                            Td(f"฿{sum(order.total if order.status != "Cancelled" else 0 for order in hotel.get_services_of_booking(booking, "Food Ordering"))}"),
+                            Td(),
+                        )
+                    ),
+                ),
+                H2("Laundry Order History"),
+                Table(
+                    Thead(
+                        Tr(
+                            Th("Cloth"),
+                            Th("Price"),
+                            Th("Status")
+                        )
+                    ),
+                    Tbody(
+                        *(Tr(
+                            Td(", ".join([f"{item['name']} x{item['amount']}" for item in order.items])),
+                            Td(f"฿{order.total}"),
+                            Td(order.status),
+                        ) for order in hotel.get_services_of_booking(booking, "Laundry"))
+                    ),
+                    Tfoot(
+                        Tr(
+                            Td("Total"),
+                            Td(f"฿{sum(order.total if order.status != "Cancelled" else 0 for order in hotel.get_services_of_booking(booking, "Laundry"))}"),
+                            Td(),
+                        )
+                    ),
+                ),
+                H2("Cleaning Order History"),
+                Table(
+                    Thead(
+                        Tr(
+                            Th("Time"),
+                            Th("Status")
+                        )
+                    ),
+                    Tbody(
+                        *(Tr(
+                            Td(order.appointment_date, order.appointment_time),
+                            Td(order.status),
+                        ) for order in hotel.get_services_of_booking(booking, "Cleaning Service"))
+                    ),
+                ),
+                H2("Repair Service Order History"),
+                Table(
+                    Thead(
+                        Tr(
+                            Th("Time"),
+                            Th("Issue"),
+                            Th("Status")
+                        )
+                    ),
+                    Tbody(
+                        *(Tr(
+                            Td(order.appointment_date, order.appointment_time),
+                            Td(order.repair_issue),
+                            Td(order.status),
+                        ) for order in hotel.get_services_of_booking(booking, "Repair Service"))
+                    ),
+                ),
                 style="text-align: center;"
             )
         )
@@ -831,8 +911,8 @@ async def get(session):
                     name="status",
                     required=True
                 ),
-                Label("Things"),
-                Input(type="text", name="things", required=True),
+                Label("commodities"),
+                Input(type="text", name="commodities", required=True),
                 Label("Image"),
                 Input(type="text", name="image", required=True
                 ),
@@ -1073,7 +1153,7 @@ def get(session):
         ),
         Div(id="main-content"),
         Div(
-            P("Mark as done!"),
+            P("Action Completed"),
             Button("Close", onclick="document.getElementById('orderModal').style.display='none';"),
             id="orderModal",
             style="""
@@ -1113,7 +1193,7 @@ def get(session):
                     Th("Timestamp"),
                     Th("Guest Name"),
                     Th("Route"),
-                    Th("Assigned Time"),
+                    Th("Appointment Time"),
                     Th("Assigned Staff"),
                     Th("Action")
                 )
@@ -1126,8 +1206,9 @@ def get(session):
                     Td(reservation.route.name),
                     Td(reservation.assigned_time),
                     Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
-                    Td(Button("Take Service", type="button", hx_post=f"/staff/transport/assign/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML"),
-                        Button("Complete", type="button", hx_post=f"/staff/transport/complete/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML", disable=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                    Td(Button("Take Service", type="button", hx_post=f"/staff/transport/assign/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is not None)),
+                        Button("Complete", type="button", hx_post=f"/staff/transport/complete/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                        Button("Cancel", type="button", hx_post=f"/staff/transport/cancel/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.transport.get_reserved_reservation())
@@ -1153,7 +1234,7 @@ def post(reservation_id: int, session):
             document.getElementById('orderModal').style.display = 'block';
             htmx.ajax('GET', '/staff/transport', {target: '#main-content'});
         """),
-        H3("Marked as done!"),
+        H3("Assigned"),
         P(f"Reservation ID: {reservation_id}"),
         hx_swap_oob="outerHTML",
         id="transport-confirmation"
@@ -1183,12 +1264,37 @@ def post(reservation_id: int, session):
     )
 
 
+@rt("/staff/transport/cancel/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.transport.cancel_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/transport', {target: '#main-content'});
+        """),
+        H3("Cancelled"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="transport-confirmation"
+    )
+
+
 @rt("/staff/laundry")
 def get(session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
     
     return Title("Laundry Service"), Br(), Container(
         H1("Laundry Service"),
@@ -1199,6 +1305,7 @@ def get(session):
                     Th("Timestamp"),
                     Th("Guest Name"),
                     Th("Items"),
+                    Th("Assigned Staff"),
                     Th("Action")
                 )
             ),
@@ -1208,8 +1315,11 @@ def get(session):
                     Td(str(reservation.timestamp)),
                     Td(reservation.guest.real_name),
                     Td(", ".join([f"{item['name']} x{item['amount']}" for item in reservation.items])),
+                    Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
                     Td(
-                        Button("Complete", type="button", hx_post=f"/staff/laundry/{reservation.id}", hx_target="#laundry-confirmation", hx_swap="outerHTML"),
+                        Button("Take Service", type="button", hx_post=f"/staff/laundry/assign/{reservation.id}", hx_target="#laundry-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is not None)),
+                        Button("Complete", type="button", hx_post=f"/staff/laundry/complete/{reservation.id}", hx_target="#laundry-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                        Button("Cancel", type="button", hx_post=f"/staff/laundry/cancel/{reservation.id}", hx_target="#laundry-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.laundry.get_reserved_reservation())
@@ -1220,14 +1330,39 @@ def get(session):
     )
 
 
-@rt("/staff/laundry/{reservation_id}")
+@rt("/staff/laundry/assign/{reservation_id}")
 def post(reservation_id: int, session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
-    hotel.laundry.complete_reservation(reservation_id)
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
+    hotel.laundry.assign_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/laundry', {target: '#main-content'});
+        """),
+        H3("Assigned"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="laundry-confirmation"
+    )
+
+
+@rt("/staff/laundry/complete/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.laundry.complete_reservation(reservation_id, staff)
 
     return Div(
         Script("""
@@ -1241,12 +1376,37 @@ def post(reservation_id: int, session):
     )
 
 
+@rt("/staff/laundry/cancel/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.laundry.cancel_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/laundry', {target: '#main-content'});
+        """),
+        H3("Cancelled"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="laundry-confirmation"
+    )
+
+
 @rt("/staff/foods")
 def get(session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
     
     return Title("Order Foods"), Br(), Container(
         H1("Order Foods"),
@@ -1257,6 +1417,7 @@ def get(session):
                     Th("Timestamp"),
                     Th("Guest Name"),
                     Th("Items"),
+                    Th("Assigned Staff"),
                     Th("Action")
                 )
             ),
@@ -1266,8 +1427,10 @@ def get(session):
                     Td(str(reservation.timestamp)),
                     Td(reservation.guest.real_name),
                     Td(", ".join([f"{item['name']} x{item['amount']}" for item in reservation.items])),
-                    Td(
-                        Button("Complete", type="button", hx_post=f"/staff/foods/{reservation.id}", hx_target="#foods-confirmation", hx_swap="outerHTML"),
+                    Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
+                    Td(Button("Take Service", type="button", hx_post=f"/staff/foods/assign/{reservation.id}", hx_target="#foods-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is not None)),
+                        Button("Complete", type="button", hx_post=f"/staff/foods/complete/{reservation.id}", hx_target="#foods-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                        Button("Cancel", type="button", hx_post=f"/staff/foods/cancel/{reservation.id}", hx_target="#foods-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.food_ordering.get_reserved_reservation())
@@ -1278,14 +1441,38 @@ def get(session):
     )
 
 
-@rt("/staff/foods/{reservation_id}")
+@rt("/staff/foods/assign/{reservation_id}")
 def post(reservation_id: int, session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
-    hotel.food_ordering.complete_reservation(reservation_id)
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
+    hotel.food_ordering.assign_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+        """),
+        H3("Assigned"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="foods-confirmation"
+    )
+
+@rt("/staff/foods/complete/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.food_ordering.complete_reservation(reservation_id, staff)
 
     return Div(
         Script("""
@@ -1299,12 +1486,37 @@ def post(reservation_id: int, session):
     )
 
 
+@rt("/staff/foods/cancel/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.food_ordering.cancel_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+        """),
+        H3("Cancelled"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="foods-confirmation"
+    )
+
+
 @rt("/staff/cleaning")
 def get(session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
     
     return Title("Cleaning Service"), Br(), Container(
         H1("Cleaning Service"),
@@ -1316,6 +1528,7 @@ def get(session):
                     Th("Guest Name"),
                     Th("Room ID"),
                     Th("Appointment Time"),
+                    Th("Assigned Staff"),
                     Th("Action")
                 )
             ),
@@ -1326,8 +1539,10 @@ def get(session):
                     Td(reservation.guest.real_name),
                     Td(reservation.room_id),
                     Td(reservation.appointment_date, " ", reservation.appointment_time),
-                    Td(
-                        Button("Complete", type="button", hx_post=f"/staff/cleaning/{reservation.id}", hx_target="#cleaning-confirmation", hx_swap="outerHTML"),
+                    Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
+                    Td(Button("Take Service", type="button", hx_post=f"/staff/cleaning/assign/{reservation.id}", hx_target="#cleaning-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is not None)),
+                        Button("Complete", type="button", hx_post=f"/staff/cleaning/complete/{reservation.id}", hx_target="#cleaning-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                        Button("Cancel", type="button", hx_post=f"/staff/cleaning/cancel/{reservation.id}", hx_target="#cleaning-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.cleaning.get_reserved_reservation())
@@ -1338,14 +1553,39 @@ def get(session):
     )
 
 
-@rt("/staff/cleaning/{reservation_id}")
+@rt("/staff/cleaning/assign/{reservation_id}")
 def post(reservation_id: int, session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
-    hotel.cleaning.complete_reservation(reservation_id)
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
+    hotel.cleaning.assign_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/cleaning', {target: '#main-content'});
+        """),
+        H3("Assigned"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="cleaning-confirmation"
+    )
+
+
+@rt("/staff/cleaning/complete/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.cleaning.complete_reservation(reservation_id, staff)
 
     return Div(
         Script("""
@@ -1359,13 +1599,38 @@ def post(reservation_id: int, session):
     )
 
 
+@rt("/staff/cleaning/cancel/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.cleaning.cancel_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/cleaning', {target: '#main-content'});
+        """),
+        H3("Cancelled"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="cleaning-confirmation"
+    )
+
+
 @rt("/staff/repair")
 def get(session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
-    
+
+    staff = hotel.get_staff_by_id(session["user_id"])
+
     return Title("Repair Service"), Br(), Container(
         H1("Repair Service"),
         Table(
@@ -1377,6 +1642,7 @@ def get(session):
                     Th("Room ID"),
                     Th("Appointment Time"),
                     Th("Issue"),
+                    Th("Assigned Staff"),
                     Th("Action")
                 )
             ),
@@ -1388,8 +1654,10 @@ def get(session):
                     Td(reservation.room_id),
                     Td(reservation.appointment_date, " ", reservation.appointment_time),
                     Td(reservation.repair_issue),
-                    Td(
-                        Button("Complete", type="button", hx_post=f"/staff/repair/{reservation.id}", hx_target="#repair-confirmation", hx_swap="outerHTML"),
+                    Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
+                    Td(Button("Take Service", type="button", hx_post=f"/staff/repair/assign/{reservation.id}", hx_target="#repair-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is not None)),
+                        Button("Complete", type="button", hx_post=f"/staff/repair/complete/{reservation.id}", hx_target="#repair-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
+                        Button("Cancel", type="button", hx_post=f"/staff/repair/cancel/{reservation.id}", hx_target="#repair-confirmation", hx_swap="outerHTML", disabled=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.repair_service.get_reserved_reservation())
@@ -1399,14 +1667,40 @@ def get(session):
         )
     )
 
-@rt("/staff/repair/{reservation_id}")
+
+@rt("/staff/repair/assign/{reservation_id}")
 def post(reservation_id: int, session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
-    hotel.repair_service.complete_reservation(reservation_id)
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
+    hotel.repair_service.assign_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/repair', {target: '#main-content'});
+        """),
+        H3("Assigned"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="repair-confirmation"
+    )
+
+
+@rt("/staff/repair/complete/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
+    hotel.repair_service.complete_reservation(reservation_id, staff)
 
     return Div(
         Script("""
@@ -1419,6 +1713,28 @@ def post(reservation_id: int, session):
         id="repair-confirmation"
     )
 
+
+@rt("/staff/repair/cancel/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.repair_service.cancel_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/repair', {target: '#main-content'});
+        """),
+        H3("Cancelled"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="repair-confirmation"
+    )
 
 
 @rt('/staff/profile')
@@ -1540,13 +1856,13 @@ async def post(request):
     size = form_data.get("size")
     price = form_data.get("price")
     status = form_data.get("status")
-    things = form_data.get("things")
+    commodities = form_data.get("commodities")
     image = form_data.get("image")
 
     if (room_id in [room.room_id for room in hotel.rooms]):
         return P("Room ID, try another ID")
     
-    hotel.create_room(room_id, room_type, size, price, status, things, image)
+    hotel.create_room(room_id, room_type, size, price, status, commodities, image)
 
     return P("Room Added")
 
@@ -1731,7 +2047,7 @@ def get(session):
         Div(
             Div(
                 Div(
-                    *[cloth_card(d) for d in hotel.laundry.cloths],
+                    *[cloth_card(d) for d in hotel.laundry.clothes],
                     id="cloth-list",
                     style="overflow-y: auto; max-height: 80vh;"
                 ),
@@ -1764,7 +2080,7 @@ def post(session, cloth_type: str):
     if cloth:
         user.laundry_cart.add(cloth)
     return (
-        Div(*[cloth_card(d) for d in hotel.laundry.cloths], id="cloth-list"),
+        Div(*[cloth_card(d) for d in hotel.laundry.clothes], id="cloth-list"),
         Div(
             H3("Your Order:"),
             Div(render_cart_items(user.laundry_cart, "/laundry/remove"), id="cloth_cart_items"),
@@ -1812,7 +2128,6 @@ def post_laundry_order(session):
 
     order = hotel.laundry.create_reservation(user, user.laundry_cart, booking)
 
-    user.laundry_cart.clear()
     return Div(
          Script("var modal = document.getElementById('orderModal'); modal.style.display = 'block';"),
          H3(f"Your Laundry Order Confirmed for guest: {user.real_name}"),
@@ -1952,8 +2267,6 @@ def post_food_order(session):
         return RedirectResponse("/booking", status_code=303)
 
     hotel.food_ordering.create_food_order(user, user.food_cart, booking)
-    
-    user.food_cart.clear()
 
     return Div(
         Script("""
@@ -2058,7 +2371,8 @@ def confirm_cleaning(session, appointment_date: str, appointment_time: str):
     # Check for existing appointment in the open period.
     for order in hotel.cleaning.reservations:
         if order.guest.real_name == user.real_name:
-            existing_date = date.fromisoformat(order.appointment_date)
+            print(order.appointment_date, order.appointment_time)
+            existing_date = order.appointment_date
             if min_date.date() <= existing_date <= max_date.date():
                 msg = f"You already have an appointment on {order.appointment_date} at {order.appointment_time}."
                 html = f"<h3>Appointment Denied</h3><p>{msg}</p><button onclick=\"document.getElementById('orderModal').style.display='none';\">Close</button>"
