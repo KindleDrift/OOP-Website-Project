@@ -138,7 +138,6 @@ def menu(session):
     return Nav(
                 Div(
                     A("Home", href="/", cls="secondary"),
-                    A("Room", href="/rooms", cls="secondary"),
                     A("Services", href="/services", cls="secondary"),
                     cls="navbar-links",
                     style="display: flex; gap: 15px; text-align: center; font-weight: 800;"
