@@ -4,7 +4,7 @@
 
 ## 1. Overview
 
-This project is a hotel website developed as part of our Object-Oriented Programming (OOP) coursework at KMITL. It demonstrates OOP principles using Python and FastHTML, a lightweight template rendering library.
+This project is a hotel website developed as part of our Object-Oriented Programming Project (OOP Project) coursework at KMITL. It demonstrates OOP principles using Python and FastHTML, a lightweight template rendering library.
 
 ## 2. Team Members
 
@@ -14,7 +14,6 @@ Phudith Janjaeng
 Siwakorn Titragool
 Bannasorn Lalod
 Korn Klinthong
-
 
 ## 3. Features
 - Room booking system
@@ -31,9 +30,9 @@ Framework: FastHTML
 ## 5. Setup & Installation
 To run this project, clone this repository:
 ```sh
-git clone
+git clone https://github.com/KindleDrift/OOP-Website-Project.git
 ```
-Create a virtual environment and then install FastHTML using pip:
+Then create a virtual environment and then install FastHTML using pip:
 ```sh
 pip install python-fasthtml
 ```
@@ -57,6 +56,8 @@ python main.py
 /hotel-website
 │── /src
 │   ├── main.py
+│   ├── /classes
+│       ├── hotel.py
 │── main.py
 │── requirements.txt
 │── README.md
