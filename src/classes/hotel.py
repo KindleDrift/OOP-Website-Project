@@ -224,7 +224,6 @@ class Hotel:
     def get_services_of_booking(self, booking, service_name):
         return [service for service in booking.service_reservations if service.name == service_name]
     
-    
 
 class User:
     __id_counter = 1
@@ -283,17 +282,29 @@ class Staff(User):
     def __init__(self, username, real_name, password, email):
         super().__init__(username, real_name, password, email)
         self.__status = "Available"
-        self.__schedule = []
+        self.__working_log = []
+        self.__current_service = None
 
     @property
     def status(self):
         return self.__status
     
-    def get_schedule(self):
-        return self.__schedule
+    @property
+    def working_log(self):
+        return self.__working_log
     
-    def add_schedule(self, work_type, time):
-        self.__schedule.append([work_type, time])
+    @property
+    def current_service(self):
+        return self.__current_service
+
+    def assign_service(self, service):
+        self.__working_log.append(service)
+        self.__current_service = service
+        self.__status = "Busy"
+
+    def complete_service(self):
+        self.__status = "Available"
+        self.__current_service = None
 
 
 class Floor:
@@ -406,10 +417,20 @@ class Service:
     def get_reserved_reservation(self):
         return [reservation for reservation in self.reservations if reservation.status != "Complete"]
     
-    def complete_reservation(self, reservation_id):
+    def assign_reservation(self, reservation_id, staff):
+        for reservation in self.reservations:
+            if reservation_id == reservation_id:
+                reservation.status = "Ongoing"
+                reservation.staff = staff
+                staff.assign_service(reservation)
+                return "Success"
+        return "Reservation not found"
+
+    def complete_reservation(self, reservation_id, staff):
         for reservation in self.reservations:
             if reservation.id == reservation_id:
                 reservation.status = "Complete"
+                staff.complete_service()
                 return "Success"
         return "Reservation not found"
 
@@ -420,6 +441,7 @@ class ServiceReservation:
         self.__name = name
         self.__id = ServiceReservation.__id_counter
         self.__guest = guest
+        self.__staff = None
         self.__status = "Pending"
         self.__timestamp = datetime.now()
         self.__total = 0
@@ -438,6 +460,14 @@ class ServiceReservation:
         return self.__guest
 
     @property
+    def staff(self):
+        return self.__staff
+    
+    @staff.setter
+    def staff(self, staff):
+        self.__staff = staff
+
+    @property
     def status(self):
         return self.__status
     
@@ -447,7 +477,7 @@ class ServiceReservation:
     
     @status.setter
     def status(self, status):
-        if status in ["Pending", "Complete", "Cancelled"]:
+        if status in ["Pending", "Ongoing", "Complete", "Cancelled"]:
             self.__status = status
         else:
             raise ValueError("Invalid status")
@@ -682,7 +712,7 @@ class CleaningService(Service):
         super().__init__("Cleaning Service")
 
     def create_reservation(self, guest, appointment_date, appointment_time, booking):
-        order = CleaningReservation(guest, appointment_date, appointment_time)
+        order = CleaningReservation(guest, appointment_date, appointment_time, booking.room.room_id)
         self.reservations.append(order)
         booking.service_reservations.append(order)
         print("Cleaning appointment confirmed:", order)  # Debug print to console only
@@ -690,10 +720,11 @@ class CleaningService(Service):
     
 
 class CleaningReservation(ServiceReservation):
-    def __init__(self, guest, appointment_date, appointment_time):
+    def __init__(self, guest, appointment_date, appointment_time, room_id):
         super().__init__("Cleaning Service", guest)
         self.__appointment_date = appointment_date
         self.__appointment_time = appointment_time
+        self.__room_id = room_id
 
     @property
     def appointment_date(self):
@@ -702,6 +733,10 @@ class CleaningReservation(ServiceReservation):
     @property
     def appointment_time(self):
         return self.__appointment_time
+    
+    @property
+    def room_id(self):
+        return self.__room_id
 
 # Repair Service #
 class RepairService(Service):
@@ -709,15 +744,32 @@ class RepairService(Service):
         super().__init__("Repair Service")
 
     def create_reservation(self, guest, appointment_date, appointment_time, repair_issue, booking):
-        order = RepairReservation(guest, appointment_date, appointment_time, repair_issue)
+        order = RepairReservation(guest, appointment_date, appointment_time, repair_issue, booking.room.room_id)
         booking.service_reservations.append(order)
         self.reservations.append(order)
         return order
     
 
 class RepairReservation(ServiceReservation):
-    def __init__(self, guest, appointment_date, appointment_time, repair_issue):
+    def __init__(self, guest, appointment_date, appointment_time, repair_issue, room_id):
         super().__init__("Repair Service", guest)
         self.__appointment_date = appointment_date
         self.__appointment_time = appointment_time
         self.__repair_issue = repair_issue
+        self.__room_id = room_id
+
+    @property
+    def appointment_date(self):
+        return self.__appointment_date
+    
+    @property
+    def appointment_time(self):
+        return self.__appointment_time
+    
+    @property
+    def repair_issue(self):
+        return self.__repair_issue
+    
+    @property
+    def room_id(self):
+        return self.__room_id

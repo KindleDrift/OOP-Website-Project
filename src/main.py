@@ -610,16 +610,27 @@ def get(booking_id: int, session):
                         Tr(
                             Th("Route"),
                             Th("Price"),
-                            Th("Time")
+                            Th("Time"),
+                            Th("Status")
                         )
                     ),
                     Tbody(
                         *(Tr(
-                            Td(transport.route),
+                            Td(transport.route.name),
                             Td(transport.route.price),
-                            Td(transport.assigned_time)
+                            Td(transport.assigned_time),
+                            Td(transport.status),
                         ) for transport in hotel.get_services_of_booking(booking, "Transport"))
                     ),
+                    Tfoot(
+                        Tr(
+                            Td("Total"),
+                            Td(sum(transport.route.price if transport.status != "Cancelled" else 0 for transport in hotel.get_services_of_booking(booking, "Transport"))),
+                            Td(),
+                            Td()
+                        )
+                    ),
+                    cls="striped"
                 ),
                 # H2("Food Order History"),
                 # Table(
@@ -1091,6 +1102,8 @@ def get(session):
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
+    staff = hotel.get_staff_by_id(session["user_id"])
+    
     return Title("Transportation"), Br(), Container(
         H1("Transportation"),
         Table(
@@ -1099,7 +1112,9 @@ def get(session):
                     Th("Order ID"),
                     Th("Timestamp"),
                     Th("Guest Name"),
+                    Th("Route"),
                     Th("Assigned Time"),
+                    Th("Assigned Staff"),
                     Th("Action")
                 )
             ),
@@ -1108,9 +1123,11 @@ def get(session):
                     Td(reservation.id),
                     Td(str(reservation.timestamp)),
                     Td(reservation.guest.real_name),
+                    Td(reservation.route.name),
                     Td(reservation.assigned_time),
-                    Td(
-                        Button("Complete", type="button", hx_post=f"/staff/transport/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML"),
+                    Td(reservation.staff.real_name if reservation.staff else "Not Assigned"),
+                    Td(Button("Take Service", type="button", hx_post=f"/staff/transport/assign/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML"),
+                        Button("Complete", type="button", hx_post=f"/staff/transport/complete/{reservation.id}", hx_target="#transport-confirmation", hx_swap="outerHTML", disable=(staff.current_service is None or staff.current_service.id != reservation.id)),
                         id=f"row-{reservation.id}"
                     )
                 ) for reservation in hotel.transport.get_reserved_reservation())
@@ -1120,15 +1137,39 @@ def get(session):
         )
     )
 
+@rt("/staff/transport/assign/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
 
-@rt("/staff/transport/{reservation_id}")
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.transport.assign_reservation(reservation_id, staff)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/transport', {target: '#main-content'});
+        """),
+        H3("Marked as done!"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="transport-confirmation"
+    )
+
+
+@rt("/staff/transport/complete/{reservation_id}")
 def post(reservation_id: int, session):
     check_login(session, "")
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
 
-    hotel.transport.complete_reservation(reservation_id)
+    staff = hotel.get_staff_by_id(session["user_id"])
+
+    hotel.transport.complete_reservation(reservation_id, staff)
 
     return Div(
         Script("""
@@ -1256,6 +1297,128 @@ def post(reservation_id: int, session):
         hx_swap_oob="outerHTML",
         id="foods-confirmation"
     )
+
+
+@rt("/staff/cleaning")
+def get(session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    return Title("Cleaning Service"), Br(), Container(
+        H1("Cleaning Service"),
+        Table(
+            Thead(
+                Tr(
+                    Th("Order ID"),
+                    Th("Timestamp"),
+                    Th("Guest Name"),
+                    Th("Room ID"),
+                    Th("Appointment Time"),
+                    Th("Action")
+                )
+            ),
+            Tbody(
+                *(Tr(
+                    Td(reservation.id),
+                    Td(str(reservation.timestamp)),
+                    Td(reservation.guest.real_name),
+                    Td(reservation.room_id),
+                    Td(reservation.appointment_date, " ", reservation.appointment_time),
+                    Td(
+                        Button("Complete", type="button", hx_post=f"/staff/cleaning/{reservation.id}", hx_target="#cleaning-confirmation", hx_swap="outerHTML"),
+                        id=f"row-{reservation.id}"
+                    )
+                ) for reservation in hotel.cleaning.get_reserved_reservation())
+            ),
+            Div(id="cleaning-confirmation"),
+            cls="striped"
+        )
+    )
+
+
+@rt("/staff/cleaning/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    hotel.cleaning.complete_reservation(reservation_id)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/cleaning', {target: '#main-content'});
+        """),
+        H3("Marked as done!"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="cleaning-confirmation"
+    )
+
+
+@rt("/staff/repair")
+def get(session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    return Title("Repair Service"), Br(), Container(
+        H1("Repair Service"),
+        Table(
+            Thead(
+                Tr(
+                    Th("Order ID"),
+                    Th("Timestamp"),
+                    Th("Guest Name"),
+                    Th("Room ID"),
+                    Th("Appointment Time"),
+                    Th("Issue"),
+                    Th("Action")
+                )
+            ),
+            Tbody(
+                *(Tr(
+                    Td(reservation.id),
+                    Td(str(reservation.timestamp)),
+                    Td(reservation.guest.real_name),
+                    Td(reservation.room_id),
+                    Td(reservation.appointment_date, " ", reservation.appointment_time),
+                    Td(reservation.repair_issue),
+                    Td(
+                        Button("Complete", type="button", hx_post=f"/staff/repair/{reservation.id}", hx_target="#repair-confirmation", hx_swap="outerHTML"),
+                        id=f"row-{reservation.id}"
+                    )
+                ) for reservation in hotel.repair_service.get_reserved_reservation())
+            ),
+            Div(id="repair-confirmation"),
+            cls="striped"
+        )
+    )
+
+@rt("/staff/repair/{reservation_id}")
+def post(reservation_id: int, session):
+    check_login(session, "")
+
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+    
+    hotel.repair_service.complete_reservation(reservation_id)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/repair', {target: '#main-content'});
+        """),
+        H3("Marked as done!"),
+        P(f"Reservation ID: {reservation_id}"),
+        hx_swap_oob="outerHTML",
+        id="repair-confirmation"
+    )
+
 
 
 @rt('/staff/profile')
