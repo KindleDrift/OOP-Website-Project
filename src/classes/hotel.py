@@ -4,7 +4,6 @@ from datetime import datetime, timedelta, date
 class Hotel:
     def __init__(self, name):
         self.__name = name
-        self.__floors = []
         self.__rooms = []
         self.__bookings = []
         self.__guests = []
@@ -329,11 +328,8 @@ class Staff(User):
         self.__status = "Available"
         self.__current_service = None
 
-
-class Floor:
-    def __init__(self, floor_number):
-        self.__floor_id = floor_number
-        self.__rooms = []
+    def swap_status(self):
+        self.__availibility = not self.__availibility
 
 class Room:
     def __init__(self, room_id, type, size, price, status: bool, items, image):
