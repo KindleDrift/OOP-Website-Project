@@ -25,36 +25,39 @@ def create_instance():
     hotel.create_item("Fridge", "Furniture", 300, True)
 
     # Items Pack
-    single_room_items = ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi"]
-    double_room_items = ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa"]
-    family_room_items = ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa", "Fridge"]
-    suite_room_items = ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa", "Fridge", "Minibar"]
+    single_room_items = [hotel.get_item_by_name(item) for item in ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi"]]
+    double_room_items = [hotel.get_item_by_name(item) for item in ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa"]]
+    family_room_items = [hotel.get_item_by_name(item) for item in ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa", "Fridge"]]
+    suite_room_items = [hotel.get_item_by_name(item) for item in ["Bed", "Table", "Chair", "Lamp", "Mirror", "Wardrobe", "TV", "AC", "Wifi", "Sofa", "Fridge", "Minibar"]]
 
     # Room
-    hotel.create_room(Room(101, "Single", 1, 100, 1, single_room_items, "room1.jpg"))
-    hotel.create_room(Room(102, "Double", 2, 150, 1, double_room_items, "room2.jpg"))
-    hotel.create_room(Room(103, "Family", 4, 200, 1, family_room_items, "room3.jpg"))
-    hotel.create_room(Room(104, "Suite", 6, 300, 1, suite_room_items, "room4.jpg"))
-    hotel.create_room(Room(105, "Single", 1, 100, 1, single_room_items, "room5.jpg"))
-    hotel.create_room(Room(106, "Double", 2, 150, 1, double_room_items, "room6.jpg"))
-    hotel.create_room(Room(107, "Family", 4, 200, 1, family_room_items, "room7.jpg"))
-    hotel.create_room(Room(108, "Suite", 6, 300, 1, suite_room_items, "room8.jpg"))
+    hotel.create_room(101, "Single", 1, 100, 1, single_room_items, "room1.jpg")
+    hotel.create_room(102, "Double", 2, 150, 1, double_room_items, "room2.jpg")
+    hotel.create_room(103, "Family", 4, 200, 1, family_room_items, "room3.jpg")
+    hotel.create_room(104, "Suite", 6, 300, 1, suite_room_items, "room4.jpg")
+    hotel.create_room(105, "Single", 1, 100, 1, single_room_items, "room5.jpg")
+    hotel.create_room(106, "Double", 2, 150, 1, double_room_items, "room6.jpg")
+    hotel.create_room(107, "Family", 4, 200, 1, family_room_items, "room7.jpg")
+    hotel.create_room(108, "Suite", 6, 300, 1, suite_room_items, "room8.jpg")
 
-    hotel.create_room(Room(201, "Single", 1, 100, 1, single_room_items, "room1.jpg"))
-    hotel.create_room(Room(202, "Double", 2, 150, 1, double_room_items, "room2.jpg"))
-    hotel.create_room(Room(203, "Family", 4, 200, 1, family_room_items, "room3.jpg"))
-    hotel.create_room(Room(204, "Suite", 6, 300, 1, suite_room_items, "room4.jpg"))
-    hotel.create_room(Room(205, "Single", 1, 100, 1, single_room_items, "room5.jpg"))
-    hotel.create_room(Room(206, "Double", 2, 150, 1, double_room_items, "room6.jpg"))
-    hotel.create_room(Room(207, "Family", 4, 200, 1, family_room_items, "room7.jpg"))
-    hotel.create_room(Room(208, "Suite", 6, 300, 1, suite_room_items, "room8.jpg"))
+    hotel.create_room(201, "Single", 1, 100, 1, single_room_items, "room1.jpg")
+    hotel.create_room(202, "Double", 2, 150, 1, double_room_items, "room2.jpg")
+    hotel.create_room(203, "Family", 4, 200, 1, family_room_items, "room3.jpg")
+    hotel.create_room(204, "Suite", 6, 300, 1, suite_room_items, "room4.jpg")
+    hotel.create_room(205, "Single", 1, 100, 1, single_room_items, "room5.jpg")
+    hotel.create_room(206, "Double", 2, 150, 1, double_room_items, "room6.jpg")
+    hotel.create_room(207, "Family", 4, 200, 1, family_room_items, "room7.jpg")
+    hotel.create_room(208, "Suite", 6, 300, 1, suite_room_items, "room8.jpg")
 
     # user account
     hotel.create_staff("ManagerPaul", "Paul Howard", "paul.h@cozyhotel.com", "password")
     hotel.create_staff("DriverJoe", "Joe Speed", "joe.s@cozyhotel.com", "password")
     hotel.create_staff("ChefMike", "Mike Cowave", "mike.c@cozyhotel.com", "password")
-    hotel.create_guest("JohnDoe", "John Doe", "john.d@domain.xyz", "password")
-    hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@domain.xyz", "password")
+    hotel.create_guest("JohnDoe", "John Doe", "john.d@email.com", "password")
+    hotel.create_guest("JaneDoe", "Jane Doe", "jane.d@email.com", "password")
+    hotel.create_guest("AliceDoe", "Alice Doe", "alice.d@email.com", "password")
+    hotel.create_guest("BobDoe", "Bob Doe", "bob.d@email.com", "password")
+    hotel.create_guest("CharlieDoe", "Charlie Doe", "charlie.d@gmail.com", "password")
 
     hotel.transport.create_route("Airport", 100)
     hotel.transport.create_route("City Tour", 200)
@@ -101,7 +104,7 @@ def create_instance():
 
     # Check-in 3 Days Ago and Check-out in three days
     hotel.create_booking(hotel.get_guest_by_id(4), hotel.get_room_by_id(105), datetime.today().date() - timedelta(days=3), datetime.today().date() + timedelta(days=3))
-    hotel.check_in_guest(1)
+    hotel.check_in_booking(1)
 
     hotel.transport.create_reservation(hotel.get_guest_by_id(4), hotel.transport.routes[0].name, (datetime.now() + timedelta(days=1)).strftime('%Y-%m-%dT%H:%M'), hotel.get_booking_by_id(1))
     
@@ -121,6 +124,15 @@ def create_instance():
     hotel.cleaning.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), hotel.get_booking_by_id(1))
 
     hotel.repair_service.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), hotel.get_item_by_name("Lamp"), "Broken Lightbulb", hotel.get_booking_by_id(1))
+    
+    # create later booking
+    hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(106), datetime.today().date() + timedelta(days=3), datetime.today().date() + timedelta(days=5))
+    hotel.create_booking(hotel.get_guest_by_id(6), hotel.get_room_by_id(201), datetime.today().date() + timedelta(days=2), datetime.today().date() + timedelta(days=5))
+    hotel.create_booking(hotel.get_guest_by_id(7), hotel.get_room_by_id(203), datetime.today().date() + timedelta(days=1), datetime.today().date() + timedelta(days=5))
+    hotel.create_booking(hotel.get_guest_by_id(8), hotel.get_room_by_id(206), datetime.today().date() + timedelta(days=9), datetime.today().date() + timedelta(days=15))
+
+
+
 
 
 ######################
@@ -168,7 +180,7 @@ def display_room(room: Room, start_date, end_date):
             P(f"Maximum People: {"👤" * room.size}"),
             P(f"Price: ฿{room.price} / Day"),
             P(f"Status: {'Available' if room.status == 1 else 'Unavailable'}"),
-            P(f"Furnitures/Commodities: {', '.join(room.items)}"),
+            P(f"Furnitures/Commodities: {', '.join([item.name for item in room.items])}"),
             Form(
                 Input(type="hidden", name="room-id", value=room.room_id),
                 Button(f"Book now for ฿{(end_date - start_date).days * room.price}", cls="btn btn-primary",
@@ -194,7 +206,7 @@ def reciept_card(room: Room, start_date, end_date):
             P(f"Maximum People: {"👤" * room.size}"),
             P(f"Price: ฿{room.price} / Day"),
             P(f"Status: {"Available" if room.status == 1 else "Unavailable"}"),
-            P(f"Furnitures/Commodities: {', '.join(room.items)}"),
+            P(f"Furnitures/Commodities: {', '.join([item.name for item in room.items])}"),
             P(f"Check-in Date: {start_date.strftime('%Y-%m-%d')}"),
             P(f"Check-out Date: {end_date.strftime('%Y-%m-%d')}"),
             P(f"Total Price: ฿{(end_date - start_date).days * room.price}"),
@@ -527,6 +539,10 @@ async def post(session, request):
     address = form_data.get("address")
     room_id = int(form_data.get("room-id"))
 
+    room = hotel.get_room_by_id(room_id)
+
+    expiration = datetime.strptime(f"{str(expiration_month)}/{str(expiration_year)}", "%m/%y")
+
     if len(card_number) != 16:
         return P("Invalid Credit Card Number", id="return-message", style="color: red;")
     if not card_number.isdigit():
@@ -535,7 +551,7 @@ async def post(session, request):
         return P("Invalid Expiry Month", id="return-message", style="color: red;")
     if expiration_year not in range(0, 100):
         return P("Invalid Expiry Year", id="return-message", style="color: red;")
-    if datetime.strptime(f"{str(expiration_month)}/{str(expiration_year)}", "%m/%y") < datetime.today():
+    if expiration < datetime.today():
         return P("Credit Card Expired", id="return-message", style="color: red;")
     if len(cvv) not in [3, 4]:
         return P("Invalid CVV", id="return-message", style="color: red;")
@@ -543,7 +559,12 @@ async def post(session, request):
     start_date = datetime.strptime(session["booking"]["start_date"], "%Y-%m-%d")
     end_date = datetime.strptime(session["booking"]["end_date"], "%Y-%m-%d")
 
-    hotel.create_booking(user, hotel.get_room_by_id(room_id), start_date, end_date)
+    if hotel.check_room_availability(room_id, start_date, end_date) == False:
+        return P("Room is not available")
+    if hotel.pay_booking(card_number, expiration.strftime("%m/%y"), cvv, room.price) != "Success":
+        return P("Payment Failed") 
+    if hotel.create_booking(user, hotel.get_room_by_id(room_id), start_date, end_date) != "Success":
+        return P("Room is not available")
 
     return Redirect("/success")
 
@@ -629,7 +650,7 @@ def get(booking_id: int, session):
                     P(f"Maximum People: {"👤" * booking.room.size}"),
                     P(f"Price: ฿{booking.room.price} / Day"),
                     P(f"Status: {"Available" if booking.room.status == 1 else "Unavailable"}"),
-                    P(f"Furniture/Commodities: {', '.join(booking.room.items)}"),
+                    P(f"Furniture/Commodities: {', '.join([item.name for item in booking.room.items])}"),
                     cls="card-text",
                     style="text-align: left; margin-left: 20px;"
                 ),
@@ -641,6 +662,7 @@ def get(booking_id: int, session):
                 P(f"Check-in Date: {booking.start_date.strftime('%Y-%m-%d')}"),
                 P(f"Check-out Date: {booking.end_date.strftime('%Y-%m-%d')}"),
                 P(f"Status: {booking.status}"),
+                Button("Cancel Booking", cls="btn btn-primary", hx_post=f"/profile/booking/{booking.booking_id}/cancel", disabled="disabled" if booking.status != "Pending" else ""),
                 style="text-align: center;"
             ),
             Card(
@@ -788,6 +810,23 @@ def get(booking_id: int, session):
     )
 
 
+@rt("/profile/booking/{booking_id}/cancel")
+def post(booking_id: int, session):
+    check_login(session, "profile")
+
+    if booking_belongs_to_user(session, booking_id) == False:
+        return P("Invalid Booking ID")
+    
+    booking = hotel.get_booking_by_id(booking_id)
+    if booking is None:
+        return P("Invalid Booking ID")
+    
+    if booking.cancel_booking() == "Success":
+        return Redirect("/profile")
+    else:
+        return P("Cancellation Failed")
+
+
 @rt("/profile/booking/{booking_id}/pay")
 def post(booking_id: int, session):
     check_login(session, "profile")
@@ -830,9 +869,15 @@ def get(session, request):
                     Label("Email",
                         Input(type="email", name="email", required=True)),
                     Label("Password",
-                        Input(type="password", name="password", required=True)),
+                        Input(id="togglePassword", type="password", name="password", required=True)),
                     Label("Confirm Password",
-                        Input(type="password", name="confirm-password", required=True)),
+                        Input(id="togglePassword", type="password", name="confirm-password", required=True)),
+                    Script("""
+                            document.getElementById('togglePassword').addEventListener('change', function () {
+                            var passwordField = document.getElementById('password');
+                            passwordField.type = this.checked ? 'text' : 'password';
+                        });
+                    """),
                     P(id="return-message", style="color: red;"),
                     Button("Sign Up", type="submit", cls="btn btn-primary", required=True, style="width: 150px;"),
                     hx_post="/signup", hx_target="#return-message"
@@ -941,9 +986,9 @@ def get(session):
             return Title("Staff Home"), (menu(session), Br(),
                 Container(
                     Card(
+                        P("Current Hotel Financial Status: ", f"฿{hotel.balance}"),
                         H1("Staff Home"),
                         P("Welcome to the staff home page"),
-                        # Link
                         H2("Staff Services"),
                         A("Room Management", href="/staff/room-management"), Br(),
                         A("Check In", href="/staff/check-in"), Br(),
@@ -985,7 +1030,8 @@ async def get(session):
                     required=True
                 ),
                 Label("Items"),
-                Input(type="text", name="items", required=True),
+                    *((Input(type="checkbox", name=f"items-{item.name}", value=item.name), Label(item.name)) for item in hotel.items),
+                Br(),
                 Label("Image"),
                 Input(type="text", name="image", required=True
                 ),
@@ -997,10 +1043,99 @@ async def get(session):
             H2("Edit Room"),
             Form(
                 Label("Room ID"),
-                Input(type="number", name="room-id", required=True),
+                Input(type="number", name="search-room-id", required=True),
+                Button("Search", type="submit", cls="btn btn-primary", hx_post=f"/find-room", hx_target="#return-form"),
+                P(id="return-form"),
             )
         )
     
+@rt("/add-room")
+async def post(request):
+    form_data = await request.form()
+    room_id = form_data.get("room-id")
+    room_type = form_data.get("room-type")
+    size = form_data.get("size")
+    price = form_data.get("price")
+    status = form_data.get("status")
+    items = []
+    for item in hotel.items:
+        if form_data.get(f"items-{item.name}"):
+            items.append(item)
+    image = form_data.get("image")
+
+    print(room_id, room_type, size, price, status, items, image)
+
+    if (room_id in [room.room_id for room in hotel.rooms]):
+        return P("Room ID already in use, try another ID")
+    
+    print("work gotdaammit")
+    hotel.create_room(int(room_id), room_type, int(size), int(price), bool(status), items, image)
+    return P("Room Added")
+
+
+@rt("/find-room")
+async def post(request):
+    form_data = await request.form()
+    room_id = form_data.get("search-room-id")
+
+    room = hotel.get_room_by_id(int(room_id))
+    if room is None:
+        return P("Room not found")
+
+    return Form(
+        Label("Room ID"),
+        Input(type="number", name="room-id", value=room.room_id, required=True),
+        Label("Room Type"),
+        Select(
+            Option("Single", value="Single", selected=room.type == "Single"),
+            Option("Double", value="Double", selected=room.type == "Double"),
+            Option("Family", value="Family", selected=room.type == "Family"),
+            Option("Suite", value="Suite", selected=room.type == "Suite"),
+            name="room-type",
+            requires=True
+        ),
+        Label("Size"),
+        Input(type="number", name="size", value=room.size, required=True),
+        Label("Price"),
+        Input(type="number", name="price", value=room.price, required=True),
+        Label("Status"),
+        Select(
+            Option("Available", value="1", selected=room.status == 1),
+            Option("Unavailable", value="0", selected=room.status == 0),
+            name="status",
+            required=True
+        ),
+        Label("Items"),
+            *((Input(type="checkbox", name=f"items-{item.name}", value=item.name, checked=item in room.items), Label(item.name)) for item in hotel.items),
+        Br(),
+        Label("Image"),
+        Input(type="text", name="image", value=room.image, required=True
+        ),
+        Button("Edit", type="submit", cls="btn btn-primary", hx_post=f"/edit-room", hx_target="#edit-return-message"),
+        P(id="edit-return-message"),
+        id="room-filter",
+    )
+
+
+@rt("/edit-room")
+async def post(request):
+    form_data = await request.form()
+    room_id = form_data.get("room-id")
+    room_type = form_data.get("room-type")
+    size = form_data.get("size")
+    price = form_data.get("price")
+    status = form_data.get("status")
+    items = []
+    for item in hotel.items:
+        if form_data.get(f"items-{item.name}"):
+            items.append(item)
+    image = form_data.get("image")
+    
+    if (room_id in [room.room_id for room in hotel.rooms]):
+        return P("Room ID already in use, try another ID")
+    
+    hotel.edit_room(int(room_id), room_type, int(size), int(price), bool(status), items, image)
+    return P("Room Edited")
 
 
 @rt("/staff/check-in")
@@ -1064,9 +1199,10 @@ async def post(request, session):
 def post(booking_id: int, session):
     check_login(session, "")
 
-    hotel.check_in_guest(booking_id)
-
-    return Redirect("/staff/check-in")
+    if hotel.check_in_booking(booking_id) == "Success":
+        return Redirect("/staff/check-in")
+    else:
+        return Redirect("/staff/check-in")
 
 
 @rt("/staff/check-out")
@@ -1127,7 +1263,7 @@ async def post(request, session):
 def post(booking_id: int, session):
     check_login(session, "")
 
-    hotel.check_out_guest(booking_id)
+    hotel.check_out_booking(booking_id)
 
     return Redirect("/staff/check-out")
 
@@ -2043,25 +2179,6 @@ def get(session):
             id="work-table"
         ) if history else Div("No work history.", id="no-work-message", style="margin-top: 10px; color: gray;")
     )
-
-
-@rt("/add-room")
-async def post(request):
-    form_data = await request.form()
-    room_id = form_data.get("room-id")
-    room_type = form_data.get("room-type")
-    size = form_data.get("size")
-    price = form_data.get("price")
-    status = form_data.get("status")
-    items = form_data.get("items")
-    image = form_data.get("image")
-
-    if (room_id in [room.room_id for room in hotel.rooms]):
-        return P("Room ID, try another ID")
-    
-    hotel.create_room(room_id, room_type, size, price, status, items, image)
-
-    return P("Room Added")
 
 
 @rt('/services')

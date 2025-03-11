@@ -10,6 +10,7 @@ class Hotel:
         self.__guests = []
         self.__staffs = []
         self.__items = []
+        self.__balance = 0
         self.__transport = Transport()
         self.__laundry = Laundry()
         self.__food_ordering = FoodOrdering()
@@ -37,6 +38,10 @@ class Hotel:
         return self.__items
     
     @property
+    def balance(self):
+        return self.__balance
+    
+    @property
     def transport(self):
         return self.__transport
     
@@ -56,7 +61,7 @@ class Hotel:
     def repair_service(self):
         return self.__repair_service
 
-    def check_in_guest(self, booking_id):
+    def check_in_booking(self, booking_id):
         booking = self.get_booking_by_id(booking_id)
         if booking is None:
             return "Booking not found"
@@ -94,7 +99,7 @@ class Hotel:
         return valid_booking
     
 
-    def check_out_guest(self, booking_id):
+    def check_out_booking(self, booking_id):
         booking = self.get_booking_by_id(booking_id)
         if booking is None:
             return "Booking not found"
@@ -131,8 +136,18 @@ class Hotel:
         return valid_booking
 
 
-    def create_room(self, room):
-        self.__rooms.append(room)
+    def create_room(self, room_id, type, size, price, status, items, image):
+        self.__rooms.append(Room(room_id, type, size, price, status, items, image))
+        return "Success"
+    
+    def edit_room(self, room_id, type=None, size=None, price=None, status=None, items=None, image=None):
+        room = self.get_room_by_id(room_id)
+        if room is None:
+            return "Room not found"
+        if room.edit_room(type, size, price, status, items, image) == "Success":
+            return "Success"
+        else:
+            return "Error"
 
     def get_room_by_id(self, room_id):
         for room in self.__rooms:
@@ -182,9 +197,23 @@ class Hotel:
                     return False
         return True
     
+    def pay_booking(self, credit_card, expiry_date, cvv, price):
+        if len(credit_card) != 16:
+            return "Invalid credit card number"
+        if len(expiry_date) != 5 or expiry_date[2] != "/":
+            return "Invalid expiry date"
+        if len(cvv) != 3:
+            return "Invalid CVV"
+        self.add_money(price)
+        return "Success"
+
+    def add_money(self, amount):
+        self.__balance += amount
+        return "Success"
+
     def create_booking(self, guest, room, start_date, end_date):
         self.bookings.append(Booking(guest, room, start_date, end_date, "Pending"))
-        return self.bookings[-1]
+        return "Success"
     
     def get_booking_by_id(self, booking_id):
         print("BookingID",booking_id)
@@ -373,6 +402,15 @@ class Room:
     def image(self):
         return self.__image
     
+    def edit_room(self, type, size, price, status, items, image):
+        self.__type = type
+        self.__size = size
+        self.__price = price
+        self.__status = status
+        self.__items = items
+        self.__image = image
+        return "Success"
+    
 
 class Item:
     def __init__(self, name, category, price, has_repair_fee):
@@ -455,6 +493,11 @@ class Booking():
                 total_fee += service.total
         return total_fee
     
+    def cancel_booking(self):
+        if self.status == "Pending":
+            self.status = "Cancelled"
+            return "Success"
+        return "Booking cannot be cancelled"
 
 # ----- Service Related Classes ----- #
 class Service:
