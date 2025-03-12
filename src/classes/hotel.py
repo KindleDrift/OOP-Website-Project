@@ -358,7 +358,7 @@ class Staff(User):
         self.__current_service = None
 
     def swap_status(self):
-        self.__availibility = not self.__availibility
+        self.__status = not self.__status
 
 class Room:
     def __init__(self, room_id, type, size, price, status: bool, items, image):
