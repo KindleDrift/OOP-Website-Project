@@ -316,8 +316,8 @@ def cloth_card(cloth):
 ######################
 def check_login(session, page=None):
     if "user_id" not in session:
+        print("User not logged in")
         return RedirectResponse(f"/login?redirect={page}" if page else "/login", status_code=303)
-    
 
 def get_user_role(session):
     if "user_id" not in session:
@@ -374,6 +374,11 @@ def get(session):
 
 @rt("/booking")
 async def get(session):
+    redirect = check_login(session, "booking")
+
+    if redirect:
+        return redirect
+
     return (Title("Booking"),
         menu(session), Br(),
         Container(H1("Book a Room"),
@@ -463,8 +468,10 @@ async def post(session, request):
 
 @rt("/booking/review")
 async def get(session, request):
-    print("login")
-    check_login(session, "booking")
+    redirect =  check_login(session, "booking")
+
+    if redirect:
+        return redirect
 
     if session["booking"] is None:
         return RedirectResponse("/booking", status_code=303)
@@ -472,8 +479,12 @@ async def get(session, request):
     start_date = session["booking"]["start_date"]
     end_date = session["booking"]["end_date"]
 
-    room_id = int(request.query_params.get('room-id'))
-    print(room_id)
+    room = request.query_params.get('room-id')
+
+    if room is None:
+        return RedirectResponse("/booking", status_code=303)
+
+    room_id = int(room)
 
     formated_start = datetime.strptime(start_date, "%Y-%m-%d")
     formated_end = datetime.strptime(end_date, "%Y-%m-%d")
@@ -526,8 +537,6 @@ async def get(session, request):
 async def post(session, request):
     form_data = await request.form()
 
-    check_login(session, "booking")
-
     user = hotel.get_guest_by_id(session["user_id"])
 
     name = form_data.get("full-name")
@@ -558,17 +567,18 @@ async def post(session, request):
     start_date = datetime.strptime(session["booking"]["start_date"], "%Y-%m-%d")
     end_date = datetime.strptime(session["booking"]["end_date"], "%Y-%m-%d")
 
-    if hotel.check_room_availability(room_id, start_date, end_date) == False:
-        return P("Room is not available")
-    if hotel.pay_booking(card_number, expiration.strftime("%m/%y"), cvv, room.price) != "Success":
-        return P("Payment Failed") 
-    if hotel.create_booking(user, hotel.get_room_by_id(room_id), start_date, end_date) != "Success":
+    if hotel.create_booking(user, room, start_date, end_date) != "Success":
         return P("Room is not available")
 
     return Redirect("/success")
 
 @rt("/success")
 def get(session):
+    redirect = check_login(session, "booking")
+
+    if redirect:
+        return redirect
+    
     session["booking"] = None
     return (Title("Success"), menu(session), Br(),
         Container(
@@ -579,7 +589,10 @@ def get(session):
 
 @rt("/profile")
 def get(session):
-    check_login(session, "profile")
+    redirect =  check_login(session, "profile")
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) == "Staff":
         return P("You're staff")
@@ -626,7 +639,10 @@ def get(session):
 
 @rt("/profile/booking/{booking_id}")
 def get(booking_id: int, session):
-    check_login(session, "profile")
+    redirect =  check_login(session, "profile")
+
+    if redirect:
+        return redirect
 
     if booking_belongs_to_user(session, booking_id) == False:
         return P("Invalid Booking ID")
@@ -798,7 +814,10 @@ def get(booking_id: int, session):
 
 @rt("/profile/booking/{booking_id}/cancel")
 def post(booking_id: int, session):
-    check_login(session, "profile")
+    redirect =  check_login(session, "profile")
+
+    if redirect:
+        return redirect
 
     if booking_belongs_to_user(session, booking_id) == False:
         return P("Invalid Booking ID")
@@ -952,14 +971,16 @@ def get(session):
 
 @rt("/staff")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     for staff in hotel.staffs:
         if staff.user_id == session["user_id"]:
             return Title("Staff Home"), (menu(session), Br(),
                 Container(
                     Card(
-                        P("Current Hotel Financial Status: ", f"฿{hotel.balance}"),
                         H1("Staff Home"),
                         P("Welcome to the staff home page"),
                         H2("Staff Services"),
@@ -1112,7 +1133,10 @@ async def post(request):
 
 @rt("/staff/check-in")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     valid_booking = hotel.filter_check_in()
 
@@ -1150,7 +1174,7 @@ def get(session):
 
 @rt("/staff/check-in")
 async def post(request, session):
-    check_login(session, "")
+    redirect =  check_login(session)
 
     try:
         form_data = await request.form()
@@ -1169,7 +1193,10 @@ async def post(request, session):
 
 @rt("/staff/check-in/{booking_id}")
 def post(booking_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if hotel.check_in_booking(booking_id) == "Success":
         return Redirect("/staff/check-in")
@@ -1179,7 +1206,10 @@ def post(booking_id: int, session):
 
 @rt("/staff/check-out")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session, "booking")
+
+    if redirect:
+        return redirect
 
     valid_booking = hotel.filter_check_out()
 
@@ -1215,7 +1245,10 @@ def get(session):
 
 @rt("/staff/check-out")
 async def post(request, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     try:
         form_data = await request.form()
@@ -1232,7 +1265,10 @@ async def post(request, session):
 
 @rt("/staff/check-out/{booking_id}")
 def post(booking_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     hotel.check_out_booking(booking_id)
 
@@ -1241,7 +1277,10 @@ def post(booking_id: int, session):
 
 @rt("/staff/booking")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     for staff in hotel.staffs:
         if staff.user_id == session["user_id"]:
@@ -1281,7 +1320,10 @@ def get(session):
 
 @rt("/staff/services")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1358,7 +1400,10 @@ def get(session):
 
 @rt("/staff/transport")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1402,7 +1447,10 @@ def get(session):
 
 @rt("/staff/transport/assign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1425,7 +1473,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/transport/unassign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1448,7 +1499,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/transport/complete/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1471,7 +1525,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/transport/cancel/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1494,7 +1551,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/laundry")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1508,9 +1568,12 @@ def get(session):
             Input(type="text", name="cloth-name", required=True),
             Label("Price"),
             Input(type="number", name="price", required=True, min=1, max=1000),
-            Button("Add", type="submit", hx_post="/staff/laundry/add", hx_target="#return-message"),
+            Button("Add", type="submit"),
+            Div(id="return-message"),
             id="room-filter",
-            style=""
+            style="",
+            required=True,
+            hx_post="/staff/laundry/add", hx_target="#return-message"
         ),
         H1("Laundry Service"),
         Table(
@@ -1554,7 +1617,7 @@ async def post(request):
 
     print("Works")
 
-    if hotel.laundry.get_cloth_by_name(cloth_name) is not None:
+    if hotel.laundry.get_cloth_type(cloth_name) is not None:
         return P("Cloth already exists")
     
     if price < 1:
@@ -1567,7 +1630,10 @@ async def post(request):
 
 @rt("/staff/laundry/assign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1590,7 +1656,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/laundry/unassign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1613,7 +1682,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/laundry/complete/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1636,7 +1708,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/laundry/cancel/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1659,7 +1734,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/foods")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1683,7 +1761,7 @@ def get(session):
                     Td(
                         Form(
                             Input(type="hidden", name="item-name", value=food.name),
-                            Group(Input(type="number", name="amount", required=True, min=1, max=100),
+                            Group(Input(type="number", name="amount", value=1, required=True, min=1, max=100),
                             Button("Restock", type="submit", cls="btn btn-primary", hx_post="/staff/foods/restock", hx_target="#foods-confirmation"), style="margin: 0; width: 350px;"),
                             id=f"row-{food.name}"
                         )
@@ -1701,8 +1779,9 @@ def get(session):
                 Input(type="number", name="price", required=True, min=1, max=100)),
             Label("Amount",
                 Input(type="number", name="amount", required=True, min=1, max=100)),
-            Button("Add", type="submit", cls="btn btn-primary", hx_post="/staff/foods/add-dish", hx_target="#foods-confirmation"),
-            id="add-dish-form"
+            Button("Add", type="submit", cls="btn btn-primary"),
+            id="add-dish-form",
+            hx_post="/staff/foods/add-dish", hx_target="#foods-confirmation",
         ),
         H1("Food Orders"),
         Table(
@@ -1802,7 +1881,10 @@ async def post(request):
 
 @rt("/staff/foods/assign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1825,7 +1907,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/foods/unassign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1848,7 +1933,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/foods/complete/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1871,7 +1959,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/foods/cancel/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1894,7 +1985,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/cleaning")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1939,7 +2033,10 @@ def get(session):
 
 @rt("/staff/cleaning/assign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1962,7 +2059,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/cleaning/unassign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -1985,7 +2085,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/cleaning/complete/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2008,7 +2111,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/cleaning/cancel/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2031,7 +2137,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/repair")
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2080,7 +2189,10 @@ def get(session):
 
 @rt("/staff/repair/assign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2103,7 +2215,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/repair/unassign/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2126,7 +2241,10 @@ def post(reservation_id: int, session):
 
 @rt("/staff/repair/complete/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2149,8 +2267,11 @@ def post(reservation_id: int, session):
 
 @rt("/staff/repair/cancel/{reservation_id}")
 def post(reservation_id: int, session):
-    check_login(session, "")
+    redirect =  check_login(session)
 
+    if redirect:
+        return redirect
+    
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
@@ -2172,7 +2293,10 @@ def post(reservation_id: int, session):
 
 @rt('/staff/profile')
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2210,8 +2334,11 @@ def get(session):
 
 @rt('/staff/check_work')
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
 
+    if redirect:
+        return redirect
+    
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
     
@@ -2251,7 +2378,10 @@ def get(session):
 
 @rt('/staff/history')
 def get(session):
-    check_login(session, "")
+    redirect =  check_login(session)
+
+    if redirect:
+        return redirect
 
     if get_user_role(session) != "Staff":
         return RedirectResponse("/", status_code=303)
@@ -2283,8 +2413,11 @@ def get(session):
 
 @rt('/services')
 def get(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
 
+    if redirect:
+        return redirect
+    
     if get_user_role(session) == "Staff":
         return RedirectResponse("/staff", status_code=303)
     
@@ -2379,7 +2512,10 @@ def get_route_price(route: str):
     
 @rt('/transport')
 def get(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     route_dropdown = Select(
         *mk_opts('route', hotel.transport.routes),
@@ -2414,7 +2550,10 @@ def get(session):
 
 @rt('/transport/reserve')
 def post(session, route: str, datetime: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     booking = get_guest_staying_booking(session)
 
@@ -2447,7 +2586,10 @@ def post(session, route: str, datetime: str):
 
 @rt('/laundry')
 def get(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2481,7 +2623,10 @@ def get(session):
 
 @rt('/laundry/add/{cloth_type}')
 def post(session, cloth_type: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2507,7 +2652,10 @@ def post(session, cloth_type: str):
 
 @rt('/laundry/remove/{cloth_type}')
 def post(session, cloth_type: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2531,7 +2679,10 @@ def post(session, cloth_type: str):
 
 @rt('/laundry/order')
 def post_laundry_order(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2554,7 +2705,10 @@ def post_laundry_order(session):
 
 @rt('/foods')
 def get(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2597,7 +2751,10 @@ def get(session):
 
 @rt('/foods/search')
 def search(session, q: str = ""):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2611,7 +2768,10 @@ def search(session, q: str = ""):
 
 @rt('/foods/add/{dish_name}')
 def post(session, dish_name: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2641,7 +2801,10 @@ def post(session, dish_name: str):
     )
 @rt('/foods/remove/{dish_name}')
 def post(session, dish_name: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2671,7 +2834,10 @@ def post(session, dish_name: str):
 
 @rt('/foods/order')
 def post_food_order(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2697,7 +2863,10 @@ def post_food_order(session):
 
 @rt('/cleaning')
 def cleaning_page(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2759,7 +2928,10 @@ def cleaning_page(session):
 
 @rt('/cleaning/confirm')
 def confirm_cleaning(session, appointment_date: str, appointment_time: str):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2813,7 +2985,10 @@ def get_item_price(item: str):
 
 @rt('/repair')
 def repair_page(session):
-    check_login(session, "service")
+    redirect = check_login(session, "services")
+
+    if redirect:
+        return redirect
 
     user = hotel.get_guest_by_id(session["user_id"])
 

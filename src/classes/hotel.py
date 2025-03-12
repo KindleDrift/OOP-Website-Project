@@ -9,7 +9,6 @@ class Hotel:
         self.__guests = []
         self.__staffs = []
         self.__items = []
-        self.__balance = 0
         self.__transport = Transport()
         self.__laundry = Laundry()
         self.__food_ordering = FoodOrdering()
@@ -35,10 +34,6 @@ class Hotel:
     @property
     def items(self):
         return self.__items
-    
-    @property
-    def balance(self):
-        return self.__balance
     
     @property
     def transport(self):
@@ -200,22 +195,10 @@ class Hotel:
                     (booking.start_date >= start_date.date() and booking.end_date <= end_date.date()):
                     return False
         return True
-    
-    def pay_booking(self, credit_card, expiry_date, cvv, price):
-        if len(credit_card) != 16:
-            return "Invalid credit card number"
-        if len(expiry_date) != 5 or expiry_date[2] != "/":
-            return "Invalid expiry date"
-        if len(cvv) != 3:
-            return "Invalid CVV"
-        self.add_money(price)
-        return "Success"
-
-    def add_money(self, amount):
-        self.__balance += amount
-        return "Success"
 
     def create_booking(self, guest, room, start_date, end_date):
+        if self.check_room_availability(room.room_id, start_date, end_date) == False:
+            return "Room not available"
         self.bookings.append(Booking(guest, room, start_date, end_date, "Pending"))
         return "Success"
     
@@ -356,9 +339,6 @@ class Staff(User):
     def complete_service(self):
         self.__status = "Available"
         self.__current_service = None
-
-    def swap_status(self):
-        self.__status = not self.__status
 
 class Room:
     def __init__(self, room_id, type, size, price, status: bool, items, image):
@@ -743,6 +723,18 @@ class FoodOrdering(Service):
 
         print("Food order confirmed:", order)
         return order
+    
+    def cancel_reservation(self, reservation_id, staff):
+        for reservation in self.reservations:
+            if reservation.id == reservation_id and reservation.staff == staff:
+                reservation.status = "Cancelled"
+                # returns food back to stock
+                for item in reservation.items:
+                    dish = self.find_dish(item['name'])
+                    dish.amount += item['amount']
+                staff.complete_service()
+                return "Success"
+        return "Reservation not found"
 
 class FoodReservation(ServiceReservation):
     def __init__(self, guest, items, total):
