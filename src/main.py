@@ -971,7 +971,7 @@ def get(session):
 
 @rt("/staff")
 def get(session):
-    redirect =  check_login(session)
+    redirect = check_login(session)
 
     if redirect:
         return redirect
@@ -988,6 +988,7 @@ def get(session):
                         A("Check In", href="/staff/check-in"), Br(),
                         A("Check Out", href="/staff/check-out"), Br(),
                         A("Assigned Service", href="/staff/services"), Br(),
+                        A("Create new staff account", href="/staff/signup"), Br(),
                         style="text-align: center;"
                     )
                 )
@@ -2409,6 +2410,75 @@ def get(session):
             id="work-table"
         ) if history else Div("No work history.", id="no-work-message", style="margin-top: 10px; color: gray;")
     )
+
+
+@rt("/staff/signup")
+def get(session, request):
+    redirect = check_login(session, "staff/signup")
+
+    if redirect:
+        return redirect
+    
+    if get_user_role(session) != "Staff":
+        return RedirectResponse("/", status_code=303)
+        
+    return (Title("Create New Staff Account"),
+        menu(session), Br(),
+        Container(
+            H1("Sign Up", style="text-align: center;"),
+            Card(
+                Form(
+                    Input(type="hidden", name="redirect", value=redirect),
+                    Label("Username",
+                        Input(type="text", name="username", placeholder="Username", required=True)),
+                    Label("Full Name",
+                        Group(Input(type="text", name="first-name", placeholder="First Name", required=True),
+                              Input(type="text", name="last-name", placeholder="Last Name", required=True))),
+                    Label("Email",
+                        Input(type="email", name="email", required=True)),
+                    Label("Password",
+                        Input(id="togglePassword", type="password", name="password", required=True)),
+                    Label("Confirm Password",
+                        Input(id="togglePassword", type="password", name="confirm-password", required=True)),
+                    Script("""
+                            document.getElementById('togglePassword').addEventListener('change', function () {
+                            var passwordField = document.getElementById('password');
+                            passwordField.type = this.checked ? 'text' : 'password';
+                        });
+                    """),
+                    P(id="return-message", style="color: red;"),
+                    Button("Sign Up", type="submit", cls="btn btn-primary", required=True, style="width: 150px;"),
+                    hx_post="/staff/signup", hx_target="#return-message"
+                ),
+                Hr(),
+                A("Login", href="/login", style="text-align: center;"),
+                style="text-align: center; max-width: 400px; margin: 0 auto"
+            )
+        )
+    )
+
+
+@rt("/staff/signup")
+async def post(request):
+    form_data = await request.form()
+    username = form_data.get("username")
+    first_name = form_data.get("first-name")
+    last_name = form_data.get("last-name")
+    email = form_data.get("email")
+    password = form_data.get("password")
+    confirm_password = form_data.get("confirm-password")
+
+    if password != confirm_password:
+        return P("Password does not match")
+
+    real_name = first_name.capitalize() + " " + last_name.capitalize()
+
+    status_message = hotel.create_staff(username, real_name, email, password)
+
+    if status_message == "Success":
+        return Redirect("/staff")
+    else:
+        return P(f"{status_message}")
 
 
 @rt('/services')
