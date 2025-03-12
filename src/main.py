@@ -461,7 +461,7 @@ async def post(session, request):
         "end_date": end_date.strftime("%Y-%m-%d"),
     }
 
-    matching_hotel = hotel.get_room_by_attribute(room_type, guest_size, max_price, items, start_date, end_date)
+    matching_hotel = hotel.get_room_by_attribute(room_type, guest_size, max_price, items, start_date.date(), end_date.date())
 
     if matching_hotel == []:
         return P("No rooms available / match your criteria 😔")   
@@ -570,8 +570,8 @@ async def post(session, request):
     if len(cvv) not in [3, 4]:
         return P("Invalid CVV", id="return-message", style="color: red;")
     
-    start_date = datetime.strptime(session["booking"]["start_date"], "%Y-%m-%d")
-    end_date = datetime.strptime(session["booking"]["end_date"], "%Y-%m-%d")
+    start_date = (datetime.strptime(session["booking"]["start_date"], "%Y-%m-%d")).date()
+    end_date = (datetime.strptime(session["booking"]["end_date"], "%Y-%m-%d")).date()
 
     if hotel.create_booking(user, room, start_date, end_date) != "Success":
         return P("Room is not available")

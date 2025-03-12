@@ -190,9 +190,9 @@ class Hotel:
         room = self.get_room_by_id(room_id)
         for booking in self.bookings:
             if booking.room == room and (booking.status == "Staying" or booking.status == "Pending"):
-                if (booking.start_date <= start_date.date() and booking.end_date >= start_date.date()) or \
-                    (booking.start_date <= end_date.date() and booking.end_date >= end_date.date()) or \
-                    (booking.start_date >= start_date.date() and booking.end_date <= end_date.date()):
+                if (booking.start_date <= start_date and booking.end_date >= start_date) or \
+                    (booking.start_date <= end_date and booking.end_date >= end_date) or \
+                    (booking.start_date >= start_date and booking.end_date <= end_date):
                     return False
         return True
 
