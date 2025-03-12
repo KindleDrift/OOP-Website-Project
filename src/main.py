@@ -378,6 +378,9 @@ async def get(session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     return (Title("Booking"),
         menu(session), Br(),
@@ -472,6 +475,9 @@ async def get(session, request):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     if session["booking"] is None:
         return RedirectResponse("/booking", status_code=303)
@@ -579,6 +585,9 @@ def get(session):
     if redirect:
         return redirect
     
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
+    
     session["booking"] = None
     return (Title("Success"), menu(session), Br(),
         Container(
@@ -595,7 +604,7 @@ def get(session):
         return redirect
 
     if get_user_role(session) == "Staff":
-        return P("You're staff")
+        return RedirectResponse("/staff", status_code=303)
     
     user = hotel.get_guest_by_id(session["user_id"])
     return (Title("Profile"),
@@ -643,6 +652,9 @@ def get(booking_id: int, session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     if booking_belongs_to_user(session, booking_id) == False:
         return P("Invalid Booking ID")
@@ -2586,6 +2598,9 @@ def get(session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     route_dropdown = Select(
         *mk_opts('route', hotel.transport.routes),
@@ -2660,6 +2675,9 @@ def get(session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2779,6 +2797,9 @@ def get(session):
 
     if redirect:
         return redirect
+
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -2937,6 +2958,9 @@ def cleaning_page(session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     user = hotel.get_guest_by_id(session["user_id"])
 
@@ -3059,6 +3083,9 @@ def repair_page(session):
 
     if redirect:
         return redirect
+    
+    if get_user_role(session) == "Staff":
+        return RedirectResponse("/staff", status_code=303)
 
     user = hotel.get_guest_by_id(session["user_id"])
 
