@@ -1502,6 +1502,16 @@ def get(session):
     staff = hotel.get_staff_by_id(session["user_id"])
     
     return Title("Laundry Service"), Br(), Container(
+        H1("Add new clothes type"),
+        Form(
+            Label("Cloth Name"),
+            Input(type="text", name="cloth-name", required=True),
+            Label("Price"),
+            Input(type="number", name="price", required=True, min=1, max=1000),
+            Button("Add", type="submit", hx_post="/staff/laundry/add", hx_target="#return-message"),
+            id="room-filter",
+            style=""
+        ),
         H1("Laundry Service"),
         Table(
             Thead(
@@ -1534,6 +1544,25 @@ def get(session):
             cls="striped"
         )
     )
+
+
+@rt("/staff/laundry/add")
+async def post(request):
+    form_data = await request.form()
+    cloth_name = form_data.get("cloth-name")
+    price = int(form_data.get("price"))
+
+    print("Works")
+
+    if hotel.laundry.get_cloth_by_name(cloth_name) is not None:
+        return P("Cloth already exists")
+    
+    if price < 1:
+        return P("Invalid Pricing")
+
+    hotel.laundry.create_cloth(cloth_name, price)
+
+    return P("Cloth Added")
 
 
 @rt("/staff/laundry/assign/{reservation_id}")
@@ -1757,7 +1786,7 @@ async def post(request):
             id="foods-confirmation"
         )
 
-    hotel.food_ordering.add_dish(dish_name, price, amount)
+    hotel.food_ordering.add_new_menu(dish_name, price, "https://placehold.co/200x150")
 
     return Div(
         Script("""
