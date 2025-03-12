@@ -100,6 +100,11 @@ class Hotel:
 
     def check_out_booking(self, booking_id):
         booking = self.get_booking_by_id(booking_id)
+        for service in booking.service_reservations:
+            if service.status == "Pending" or service.status == "Ongoing":
+                if service.staff is not None:
+                    service.staff.complete_service()
+                service.status = "Cancelled"
         if booking is None:
             return "Booking not found"
         if booking.status == "Checked Out":
@@ -252,15 +257,10 @@ class Hotel:
     def get_total_service_fee(self, booking):
         total_fee = 0
         for service in booking.service_reservations:
-            total_fee += service.total
-        return total_fee
-
-    def get_current_service_fee(self, booking):
-        total_fee = 0
-        for service in booking.service_reservations:
-            if service.status == "Complete" and service.paid == False:
+            if service.status == "Complete":
                 total_fee += service.total
         return total_fee
+
     
     def get_services_of_booking(self, booking, service_name):
         return [service for service in booking.service_reservations if service.name == service_name]
@@ -476,19 +476,6 @@ class Booking():
     def service_reservations(self):
         return self.__service_reservations
     
-    def pay_service_fee(self):
-        for service in self.__service_reservations:
-            if service.status == "Complete" and service.paid == False:
-                service.paid = True
-        return "Success"
-    
-    def get_unpaid_service_fee(self):
-        total_fee = 0
-        for service in self.__service_reservations:
-            if service.status == "Complete" and service.paid == False:
-                total_fee += service.total
-        return total_fee
-    
     def cancel_booking(self):
         if self.status == "Pending":
             self.status = "Cancelled"
@@ -525,6 +512,7 @@ class Service:
         for reservation in self.reservations:
             if reservation.id == reservation_id and reservation.staff == staff:
                 reservation.status = "Pending"
+                reservation.staff = None
                 staff.complete_service()
                 return "Success"
         return "Reservation not found"
@@ -554,7 +542,6 @@ class ServiceReservation:
         self.__guest = guest
         self.__staff = None
         self.__status = "Pending"
-        self.__paid = False
         self.__timestamp = datetime.now()
         self.__total = 0
         ServiceReservation.__id_counter += 1
@@ -593,14 +580,6 @@ class ServiceReservation:
             self.__status = status
         else:
             raise ValueError("Invalid status")
-        
-    @property
-    def paid(self):
-        return self.__paid
-    
-    @paid.setter
-    def paid(self, paid):
-        self.__paid = paid
         
     @property
     def timestamp(self):

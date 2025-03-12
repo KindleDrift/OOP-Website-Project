@@ -235,7 +235,6 @@ def checkout_table(booking: Booking):
                 Td(booking.guest.real_name),
                 Td(booking.start_date),
                 Td(booking.end_date),
-                Td(booking.get_unpaid_service_fee()),
                 Td(Button("Check Out", cls="btn btn-primary", hx_post=f"/staff/check-out/{booking.booking_id}"))
             )
 
@@ -669,8 +668,7 @@ def get(booking_id: int, session):
                 H2("Payment Details"),
                 P(f"Total Room Price: ฿{(booking.end_date - booking.start_date).days * booking.room.price}"),
                 P(f"Total Service Fee: ฿{hotel.get_total_service_fee(booking)}"),
-                P(f"Current Unpaid Service Fee: ฿{hotel.get_current_service_fee(booking)}"),
-                Button("Pay Now", cls="btn btn-primary", hx_post=f"/profile/booking/{booking.booking_id}/pay"),
+                P(f"Transaction only includes completed services."),
                 H2("Transportation History"),
                 Table(
                     Thead(
@@ -679,7 +677,6 @@ def get(booking_id: int, session):
                             Th("Price"),
                             Th("Time"),
                             Th("Status"),
-                            Th("Paid")
                         )
                     ),
                     Tbody(
@@ -688,7 +685,6 @@ def get(booking_id: int, session):
                             Td(f"฿{transport.route.price if transport.status != 'Cancelled' else 0}"),
                             Td(transport.assigned_time),
                             Td(transport.status),
-                            Td(transport.paid),
                         ) for transport in hotel.get_services_of_booking(booking, "Transport"))
                     ),
                     Tfoot(
@@ -697,7 +693,6 @@ def get(booking_id: int, session):
                             Td(f"฿{sum(transport.route.price if transport.status != "Cancelled" else 0 for transport in hotel.get_services_of_booking(booking, "Transport"))}"),
                             Td(),
                             Td(),
-                            Td()
                         )
                     ),
                     cls="striped"
@@ -709,7 +704,6 @@ def get(booking_id: int, session):
                             Th("Food"),
                             Th("Price"),
                             Th("Status"),
-                            Th("Paid")
                         )
                     ),
                     Tbody(
@@ -717,7 +711,6 @@ def get(booking_id: int, session):
                             Td(", ".join([f"{item['name']} x{item['amount']}" for item in order.items])),
                             Td(f"฿{order.total if order.status != 'Cancelled' else 0}"),
                             Td(order.status),
-                            Td(order.paid),
                         ) for order in hotel.get_services_of_booking(booking, "Food Ordering"))
                     ),
                     Tfoot(
@@ -725,7 +718,6 @@ def get(booking_id: int, session):
                             Td("Total"),
                             Td(f"฿{sum(order.total if order.status != "Cancelled" else 0 for order in hotel.get_services_of_booking(booking, "Food Ordering"))}"),
                             Td(),
-                            Td()
                         )
                     ),
                 ),
@@ -736,7 +728,6 @@ def get(booking_id: int, session):
                             Th("Cloth"),
                             Th("Price"),
                             Th("Status"),
-                            Th("Paid")
                         )
                     ),
                     Tbody(
@@ -744,7 +735,6 @@ def get(booking_id: int, session):
                             Td(", ".join([f"{item['name']} x{item['amount']}" for item in order.items])),
                             Td(f"฿{order.total if order.status != 'Cancelled' else 0}"),
                             Td(order.status),
-                            Td(order.paid),
                         ) for order in hotel.get_services_of_booking(booking, "Laundry"))
                     ),
                     Tfoot(
@@ -752,7 +742,6 @@ def get(booking_id: int, session):
                             Td("Total"),
                             Td(f"฿{sum(order.total if order.status != "Cancelled" else 0 for order in hotel.get_services_of_booking(booking, "Laundry"))}"),
                             Td(),
-                            Td()
                         )
                     ),
                 ),
@@ -780,7 +769,6 @@ def get(booking_id: int, session):
                             Th("Issue"),
                             Th("Fee"),
                             Th("Status"),
-                            Th("Paid")
                         )
                     ),
                     Tbody(
@@ -790,7 +778,6 @@ def get(booking_id: int, session):
                             Td(order.repair_issue),
                             Td(f"฿{order.total if order.status != 'Cancelled' else 0}"),
                             Td(order.status),
-                            Td(order.paid),
                         ) for order in hotel.get_services_of_booking(booking, "Repair Service"))
                     ),
                     Tfoot(
@@ -800,7 +787,6 @@ def get(booking_id: int, session):
                             Td(),
                             Td(f"฿{sum(order.total if order.status != "Cancelled" else 0 for order in hotel.get_services_of_booking(booking, "Repair Service"))}"),
                             Td(),
-                            Td()
                         )
                     ),
                 ),
@@ -825,23 +811,6 @@ def post(booking_id: int, session):
         return Redirect("/profile")
     else:
         return P("Cancellation Failed")
-
-
-@rt("/profile/booking/{booking_id}/pay")
-def post(booking_id: int, session):
-    check_login(session, "profile")
-
-    if booking_belongs_to_user(session, booking_id) == False:
-        return P("Invalid Booking ID")
-
-    booking = hotel.get_booking_by_id(booking_id)
-    if booking is None:
-        return P("Invalid Booking ID")
-    
-    if booking.pay_service_fee() == "Success":
-        return Redirect(f"/profile/booking/{booking_id}")
-    else:
-        return P("Payment Failed")
 
 
 @rt("/signup")
@@ -905,10 +874,12 @@ async def post(request):
 
     real_name = first_name.capitalize() + " " + last_name.capitalize()
 
-    if hotel.create_guest(username, real_name, email, password) == "Success":
+    status_message = hotel.create_guest(username, real_name, email, password)
+
+    if status_message == "Success":
         return Redirect("/login")
     else:
-        return P("Username already exists")
+        return P(f"{status_message}")
 
 
 @rt("/login", methods=["GET"])
@@ -960,7 +931,7 @@ async def post(request, session):
     hidden_redirect = form_data.get("redirect", "/")
 
     account = hotel.validate_user(email, password)
-    print(email)
+
     if account is not None: 
         session["user_id"] = account.user_id
         return Redirect(hidden_redirect)
@@ -974,7 +945,9 @@ def get(session):
     return Redirect("/")
 
 
-@rt("")
+######################
+#    Staff  Routes   #
+######################
 
 
 @rt("/staff")
@@ -1068,7 +1041,6 @@ async def post(request):
     if (room_id in [room.room_id for room in hotel.rooms]):
         return P("Room ID already in use, try another ID")
     
-    print("work gotdaammit")
     hotel.create_room(int(room_id), room_type, int(size), int(price), bool(status), items, image)
     return P("Room Added")
 
@@ -1232,7 +1204,6 @@ def get(session):
                             Th("Guest Name"),
                             Th("Check-in Date"),
                             Th("Check-out Date"),
-                            Th("Unpaid Service Fee"),
                             Th("Action")
                         )
                     ),
@@ -1666,8 +1637,45 @@ def get(session):
     
     staff = hotel.get_staff_by_id(session["user_id"])
     
-    return Title("Order Foods"), Br(), Container(
-        H1("Order Foods"),
+    return Title("Food Orders"), Br(), Container(
+        H1("Restock Food"),
+        Table(
+            Thead(
+                Tr(
+                    Th("Item Name"),
+                    Th("Amount"),
+                    Th("Action")
+                )
+            ),
+            Tbody(
+                *(Tr(
+                    Td(food.name),
+                    Td(food.amount),
+                    Td(
+                        Form(
+                            Input(type="hidden", name="item-name", value=food.name),
+                            Group(Input(type="number", name="amount", required=True, min=1, max=100),
+                            Button("Restock", type="submit", cls="btn btn-primary", hx_post="/staff/foods/restock", hx_target="#foods-confirmation"), style="margin: 0; width: 350px;"),
+                            id=f"row-{food.name}"
+                        )
+                    )
+                ) for food in hotel.food_ordering.dishes)
+            ),
+            Div(id="foods-confirmation"),
+            cls="striped"
+        ),
+        H1("Add new dish"),
+        Form(
+            Label("Dish Name",
+                Input(type="text", name="dish-name", required=True)),
+            Label("Price",
+                Input(type="number", name="price", required=True, min=1, max=100)),
+            Label("Amount",
+                Input(type="number", name="amount", required=True, min=1, max=100)),
+            Button("Add", type="submit", cls="btn btn-primary", hx_post="/staff/foods/add-dish", hx_target="#foods-confirmation"),
+            id="add-dish-form"
+        ),
+        H1("Food Orders"),
         Table(
             Thead(
                 Tr(
@@ -1697,6 +1705,69 @@ def get(session):
             Div(id="foods-confirmation"),
             cls="striped"
         )
+    )
+
+
+@rt("/staff/foods/restock")
+async def post(request):
+    form_data = await request.form()
+    item_name = form_data.get("item-name")
+    amount = int(form_data.get("amount"))
+
+    if amount <= 0:
+        return Div(
+            Script("""
+                document.getElementById('orderModal').style.display = 'block';
+                htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+            """),
+            H3("Invalid amount"),
+            hx_swap_oob="outerHTML",
+            id="foods-confirmation"
+        )
+
+    hotel.food_ordering.restock(item_name, amount)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+        """),
+        H3("Restocked"),
+        P(f"Item: {item_name}"),
+        hx_swap_oob="outerHTML",
+        id="foods-confirmation"
+    )
+
+
+@rt("/staff/foods/add-dish")
+async def post(request):
+    form_data = await request.form()
+    dish_name = form_data.get("dish-name")
+    price = int(form_data.get("price"))
+    amount = int(form_data.get("amount"))
+
+    if price <= 0 or amount <= 0:
+        return Div(
+            Script("""
+                document.getElementById('orderModal').style.display = 'block';
+                htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+            """),
+            H3("Invalid price or amount"),
+            hx_swap_oob="outerHTML",
+            id="foods-confirmation"
+        )
+
+    hotel.food_ordering.add_dish(dish_name, price, amount)
+
+    return Div(
+        Script("""
+            document.getElementById('orderModal').style.display = 'block';
+            htmx.ajax('GET', '/staff/foods', {target: '#main-content'});
+        """),
+        H3("Added"),
+        P(f"Dish: {dish_name}"),
+        hx_swap_oob="outerHTML",
+        id="foods-confirmation"
     )
 
 
