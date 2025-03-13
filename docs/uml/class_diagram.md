@@ -1,232 +1,227 @@
 ```mermaid
 ---
-title: Cozy Hotel
+title: Cozy Hotel Implementation
 ---
 classDiagram
 
-    Hotel o-- User
+    Hotel o-- Room
     Hotel o-- Booking
+    Hotel o-- User
+    Hotel o-- Item
     Hotel o-- Service
     User <|-- Staff
     User <|-- Guest
     Booking --> Guest
     Booking --> Room
-    Room --> Guest
-    Room *-- Commodity
-    Service <|-- Laundry
-    Laundry *-- Cloth 
-    Service <|-- FoodOrdering
-    FoodOrdering *-- Dish
+    Room --> Item
     Service <|-- Transport
-    Transport *-- Route
-    Service <|-- RepairService
+    Service <|-- Laundry
+    Service <|-- FoodOrdering
     Service <|-- CleaningService
+    Service <|-- RepairService
     ServiceReservation <|-- TransportReservation
     ServiceReservation <|-- LaundryReservation
     ServiceReservation <|-- FoodReservation
-    ServiceReservation <|-- RepairReservation
     ServiceReservation <|-- CleaningReservation
+    ServiceReservation <|-- RepairReservation
     Service o-- ServiceReservation
-    Transport o-- TransportReservation
-    Laundry o-- LaundryReservation
-    FoodOrdering o-- FoodReservation
-    RepairService o-- RepairReservation
-    CleaningService o-- CleaningReservation
-    Guest <-- Cart
- 
+    Guest *-- Cart
+    Transport o-- Route
+    Laundry o-- Cloth
+    FoodOrdering o-- Dish
+    Booking o-- ServiceReservation
 
     class Hotel{
         -name
-        -balance
-        -users[]
-        -floors[]
+        -rooms[]
         -bookings[]
-        -staying[]
-
-        -services[]
-        -get_room_from_staying()
-        -get_all_service()
-        -get_food_from_name()
-        -get_cloth_from_type()
-        -get_route_from_name()
-        -get_staff_from_id()
-        -assign_staff()
-
-        -register_account()
-        -search_room()
-        -create_booking()
-        -refund()
-
-        -check_in_Guest()
-        -check_out_Guest()
-
-        -choose_service()
-        -request_cleaning()
-        -request_repairing()
-        -calculate_food_price()
-        -calculate_cloth_price()
-        -calculate_transport_price()
-        -order_food()
-        -laundring()
-        -transporting()
-        -record_service_usage()
-
-        -check_work()
-        -working()
+        -guests[]
+        -staffs[]
+        -items[]
+        -transport
+        -laundry
+        -food_ordering
+        -cleaning
+        -repair_service
+        +create_room()
+        +edit_room()
+        +get_room_by_id()
+        +get_room_by_attribute()
+        +check_room_availability()
+        +get_role_by_id()
+        +get_guest_by_id()
+        +get_staff_by_id()
+        +create_guest()
+        +create_staff()
+        +validate_user()
+        +create_booking()
+        +get_booking_by_id()
+        +get_booking_of_guest()
+        +check_in_booking()
+        +check_out_booking()
+        +filter_check_in()
+        +filter_check_out()
+        +create_item()
+        +get_item_by_name()
+        +get_total_service_fee()
+        +get_services_of_booking()
     }
+
     class User{
-        -id
-        -name
-        -phone
+        -user_id
+        -username
+        -real_name
         -email
         -password
-        -balance
-        -login()
-        -validate_user()
+        +authenticate()
     }
+
     class Guest{
-        -rank
-        -exp
-        -points
-        -balance
-        -check_in_history[]
         -laundry_cart
         -food_cart
-        -deduct_fund()
-        -add_fund()
-        -gain_points()
-        -gain_exps()
-        -rank_up()
-        -clear_laundry_cart()
-        -clear_food_cart()
+        +clear_laundry_cart()
+        +clear_food_cart()
     }
+
     class Staff{
-        -role
         -status
         -working_log[]
-        -assign_staff()
-        -find_available_right()
-        -assign_work()
-        -swap_status()
-        -check_pending_work()
+        -current_service
+        +assign_service()
+        +complete_service()
     }
+
     class Room{
-        -room_number
+        -room_id
         -type
-        -max_person
+        -size
         -price
         -status
-        -commodities[]
-        -get_room()
-        -swap_status()
+        -items[]
+        -image
+        +edit_room()
     }
-    class Commodity{
+
+    class Item{
         -name
-        -type
-        -breaking_fine
+        -category
+        -price
         -status
     }
+
     class Booking{
-        -id
+        -booking_id
         -guest
         -room
-        -check_in_dates
-        -check_out_dates
-        -validate_booking()
-        -booking_cancellation()
-        -destroy_booking()
+        -start_date
+        -end_date
+        -status
+        -service_reservations[]
+        +cancel_booking()
     }
+
+    class Cart{
+        -items
+        +add()
+        +remove()
+        +total()
+        +clear()
+    }
+
     class Service{
         -name
         -reservations[]
-        -assign_reservation()
-        -unassign_reservation()
-        -complete_reservation()
-        -cancel_reservation()
+        +get_reserved_reservation()
+        +assign_reservation()
+        +unassign_reservation()
+        +complete_reservation()
+        +cancel_reservation()
+    }
 
-    }
-    class Laundry{
-        -cloths[]
-        -create_cloth()
-        -get_cloth_type()
-        -create_reservation()
-    }
-    class Cloth{
-        -name
-        -price
-    }
-    class FoodOrdering{
-        -dishes = []
-        -find_dish()
-        -restock()
-        -add_new_menu()
-        -create_FoodOrdering()
-
-    }
-    class Dish{
-        -name
-        -price
-        -amount
-        -image
-    }
-    class Transport{
-        -routes[]
-        -create_route()
-        -create_reservation()
-
-    }
-    class Route{
-        -name
-        -price
-    }
-    class CleaningService{
-        -create_reservation()
-    }
-    class RepairService{
-        -create_reservation()
-    }
     class ServiceReservation{
         -name
         -id
         -guest
         -staff
         -status
-        -paid
         -timestamp
         -total
     }
+
+    class Transport{
+        -routes[]
+        +create_route()
+        +create_reservation()
+    }
+
     class TransportReservation{
         -route
         -total
         -assigned_time
     }
+
+    class Route{
+        -name
+        -price
+    }
+
+    class Laundry{
+        -clothes[]
+        +create_cloth()
+        +get_cloth_type()
+        +create_reservation()
+    }
+
     class LaundryReservation{
         -items[]
         -total
     }
+
+    class Cloth{
+        -name
+        -price
+    }
+
+    class FoodOrdering{
+        -dishes[]
+        +find_dish()
+        +restock()
+        +add_new_menu()
+        +create_food_order()
+    }
+
     class FoodReservation{
         -items[]
         -total
     }
+
+    class Dish{
+        -name
+        -price
+        -amount
+        -image_url
+    }
+
+    class CleaningService{
+        +create_reservation()
+    }
+
     class CleaningReservation{
         -appointment_date
         -appointment_time
         -room_id
     }
+
+    class RepairService{
+        +create_reservation()
+    }
+
     class RepairReservation{
         -appointment_date
         -appointment_time
         -item
-        -room_id
         -repair_issue
+        -room_id
         -total
     }
-    class Cart{
-        -items[]
-        -add()
-        -remove()
-        -total()
-        -clear()
-    }
-
 ```
