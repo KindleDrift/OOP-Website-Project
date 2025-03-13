@@ -6,27 +6,35 @@ classDiagram
 
     Hotel o-- User
     Hotel o-- Booking
-    Hotel o-- Staying
-    Hotel o-- Floor
     Hotel o-- Service
     User <|-- Staff
     User <|-- Guest
     Booking --> Guest
     Booking --> Room
     Room --> Guest
-    Floor *-- Room
-    Staying --> Guest
-    Staying --> Room
     Room *-- Commodity
     Service <|-- Laundry
     Laundry *-- Cloth 
-    Service <|-- Food_order
-    Food_order *-- Food
+    Service <|-- FoodOrdering
+    FoodOrdering *-- Dish
     Service <|-- Transport
     Transport *-- Route
-    Service <|-- Repair
-    Service <|-- Clean
-    
+    Service <|-- RepairService
+    Service <|-- CleaningService
+    ServiceReservation <|-- TransportReservation
+    ServiceReservation <|-- LaundryReservation
+    ServiceReservation <|-- FoodReservation
+    ServiceReservation <|-- RepairReservation
+    ServiceReservation <|-- CleaningReservation
+    Service o-- ServiceReservation
+    Transport o-- TransportReservation
+    Laundry o-- LaundryReservation
+    FoodOrdering o-- FoodReservation
+    RepairService o-- RepairReservation
+    CleaningService o-- CleaningReservation
+    Guest <-- Cart
+ 
+
     class Hotel{
         -name
         -balance
@@ -37,7 +45,6 @@ classDiagram
 
         -services[]
         -get_room_from_staying()
-        -get_staying_from_guest()
         -get_all_service()
         -get_food_from_name()
         -get_cloth_from_type()
@@ -83,11 +90,15 @@ classDiagram
         -points
         -balance
         -check_in_history[]
+        -laundry_cart
+        -food_cart
         -deduct_fund()
         -add_fund()
         -gain_points()
         -gain_exps()
         -rank_up()
+        -clear_laundry_cart()
+        -clear_food_cart()
     }
     class Staff{
         -role
@@ -98,10 +109,6 @@ classDiagram
         -assign_work()
         -swap_status()
         -check_pending_work()
-    }
-    class Floor{
-        -floor_number
-        -rooms[]
     }
     class Room{
         -room_number
@@ -129,51 +136,97 @@ classDiagram
         -booking_cancellation()
         -destroy_booking()
     }
-    class Staying{
-        -id
-        -guest
-        -room
-        -check_in_guest[]
-        -check_out_guest()
-        -payment_calculation()
-        -break_fine()
-    }
     class Service{
-        -open_period
+        -name
+        -reservations[]
+        -assign_reservation()
+        -unassign_reservation()
+        -complete_reservation()
+        -cancel_reservation()
+
     }
     class Laundry{
-        -cloth_types[]
-        -request_laudry()
-        -get_all_cloth_type()
+        -cloths[]
+        -create_cloth()
+        -get_cloth_type()
+        -create_reservation()
     }
     class Cloth{
-        -type
-        -price
-    }
-    class Food_order{
-        -menu []
-        -get_menu()
-        -add_menu()
-        -check_food_status()
-    }
-    class Food{
         -name
         -price
-        -status
+    }
+    class FoodOrdering{
+        -dishes = []
+        -find_dish()
+        -restock()
+        -add_new_menu()
+        -create_FoodOrdering()
+
+    }
+    class Dish{
+        -name
+        -price
+        -amount
+        -image
     }
     class Transport{
         -routes[]
-        -get_all_route()
-        -request_transport()
+        -create_route()
+        -create_reservation()
+
     }
     class Route{
-        -id
+        -name
         -price
     }
-    class Clean{
-        -request_cleaning()
+    class CleaningService{
+        -create_reservation()
     }
-    class Repair{
-        -request_repairing()
+    class RepairService{
+        -create_reservation()
     }
+    class ServiceReservation{
+        -name
+        -id
+        -guest
+        -staff
+        -status
+        -paid
+        -timestamp
+        -total
+    }
+    class TransportReservation{
+        -route
+        -total
+        -assigned_time
+    }
+    class LaundryReservation{
+        -items[]
+        -total
+    }
+    class FoodReservation{
+        -items[]
+        -total
+    }
+    class CleaningReservation{
+        -appointment_date
+        -appointment_time
+        -room_id
+    }
+    class RepairReservation{
+        -appointment_date
+        -appointment_time
+        -item
+        -room_id
+        -repair_issue
+        -total
+    }
+    class Cart{
+        -items[]
+        -add()
+        -remove()
+        -total()
+        -clear()
+    }
+
 ```
