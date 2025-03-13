@@ -121,9 +121,9 @@ def create_instance():
     hotel.get_guest_by_id(4).laundry_cart.add(hotel.laundry.clothes[2])
     hotel.laundry.create_reservation(hotel.get_guest_by_id(4), hotel.get_guest_by_id(4).laundry_cart, hotel.get_booking_by_id(1))
 
-    hotel.cleaning.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), hotel.get_booking_by_id(1))
+    hotel.cleaning.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().strftime("%H:%M"), hotel.get_booking_by_id(1))
 
-    hotel.repair_service.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().time(), hotel.get_item_by_name("Lamp"), "Broken Lightbulb", hotel.get_booking_by_id(1))
+    hotel.repair_service.create_reservation(hotel.get_guest_by_id(4), datetime.today().date() + timedelta(days=1), datetime.now().strftime("%H:%M"), hotel.get_item_by_name("Lamp"), "Broken Lightbulb", hotel.get_booking_by_id(1))
     
     # create later booking
     hotel.create_booking(hotel.get_guest_by_id(5), hotel.get_room_by_id(106), datetime.today().date() + timedelta(days=3), datetime.today().date() + timedelta(days=5))
@@ -777,7 +777,7 @@ def get(booking_id: int, session):
                 Table(
                     Thead(
                         Tr(
-                            Th("Appointment Date"),
+                            Th("Appointment Time"),
                             Th("Status")
                         )
                     ),
@@ -792,7 +792,7 @@ def get(booking_id: int, session):
                 Table(
                     Thead(
                         Tr(
-                            Th("Appointment Date"),
+                            Th("Appointment Time"),
                             Th("Item"),
                             Th("Issue"),
                             Th("Fee"),
@@ -3050,7 +3050,7 @@ def confirm_cleaning(session, appointment_date: str, appointment_time: str):
     
     # Check for existing appointment in the open period.
     for order in hotel.cleaning.reservations:
-        if order.guest.real_name == user.real_name:
+        if order.guest.real_name == user.real_name and order.status not in ["Cancelled", "Complete"]:
             print(order.appointment_date, order.appointment_time)
             existing_date = order.appointment_date
             if min_date.date() <= existing_date <= max_date.date():
